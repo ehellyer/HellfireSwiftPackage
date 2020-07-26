@@ -33,7 +33,7 @@ public class ServiceInterface {
         //We decided we always want to have a value in statusCode.  This means that for non-service errors, we set the statusCode to negative values that are not recognized in the industry.
         let defaultStatusCode = (error == nil) ? HTTPCode.ok.rawValue : HTTPCode.generalError.rawValue
         var statusCode: Int = response?.statusCode ?? defaultStatusCode
-
+        
         if let _error = error as NSError?, HTTPCode.isOk(statusCode: statusCode) == false {
             if (_error.code == HTTPCode.userCancelledRequest.rawValue) {
                 statusCode = HTTPCode.userCancelledRequest.rawValue
@@ -45,10 +45,10 @@ public class ServiceInterface {
                 statusCode = HTTPCode.hostNameNotFound.rawValue
             }
         }
-
+        
         return statusCode
     }
-
+    
     private func responseHeaders(_ response: HTTPURLResponse?) -> [HTTPHeader] {
         guard let headers = response?.allHeaderFields else { return [] }
         let httpHeaders = headers.compactMap { HTTPHeader(name: "\($0.key)", value: "\($0.value)") }
@@ -69,11 +69,17 @@ public class ServiceInterface {
         urlRequest.timeoutInterval = request.timeoutInterval
         
         //Ask session delegate for any headers for this request.
-        if let headers = self.sessionDelegate?.headerCollection(forRequest: request) {
-            headers.forEach({ (header) in
-                urlRequest.setValue(header.value, forHTTPHeaderField: header.name)
-            })
+        var headers: [HTTPHeader] = self.sessionDelegate?.headerCollection(forRequest: request) ?? []
+        
+        //Add diagnostic and trouble shooting correlation Id
+        if (headers.filter { $0.name == "X-Correlation-ID" }).isEmpty {
+            headers.append(HTTPHeader(name: "X-Correlation-ID", value: UUID().uuidString))
         }
+        
+        //Add headers to URLRequest
+        headers.forEach({ (header) in
+            urlRequest.setValue(header.value, forHTTPHeaderField: header.name)
+        })
         
         return urlRequest
     }
@@ -112,7 +118,7 @@ public class ServiceInterface {
         }
         self.reachabilityManager?.startListening()
     }
-
+    
     //MARK: - Public API
     
     deinit {
@@ -120,7 +126,7 @@ public class ServiceInterface {
         print("\(String(describing: type(of: self))) has deallocated. - \(#function)")
         #endif
     }
-
+    
     public init() { }
     
     ///Gets or sets the handler for the reachability status change events.
@@ -148,7 +154,7 @@ public class ServiceInterface {
     }
     
     public weak var sessionDelegate: ServiceInterfaceSessionDelegate?
-
+    
     ///Executes the network request asynchronously.
     ///Calls back with cached response on same thread, in current call stack.
     ///Calls back with network response by dispatching to the main thread.
@@ -158,7 +164,7 @@ public class ServiceInterface {
     ///     - request: The network request to be executed
     ///     - completion: The completion function to be called with the response.
     public func execute(_ request: NetworkRequest, completion: @escaping TaskResult) -> RequestTaskIdentifier? {
-
+        
         if hasCachedResponse(forRequest: request, completion: completion) { return nil }
         
         let urlRequest = self.urlRequest(fromNetworkRequest: request)

@@ -25,7 +25,7 @@
 
 import Foundation
 
-class MD5Hash {
+internal class MD5Hash {
     
     //MARK: - Public API
     func MD5(_ input: String) -> String {
