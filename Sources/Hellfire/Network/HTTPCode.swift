@@ -10,7 +10,7 @@ import Foundation
 
 public typealias StatusCode = Int
 
-public enum HTTPCode: Int {
+public enum HTTPCode: Int, JSONSerializable {
     //2xx Success codes
     case ok = 200
     case created = 201

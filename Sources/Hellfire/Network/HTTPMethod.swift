@@ -10,7 +10,7 @@ import Foundation
 
 //https://tools.ietf.org/html/rfc7231#section-4.3
 ///HTTP Methods
-public enum HTTPMethod: String {
+public enum HTTPMethod: String, JSONSerializable {
     case connect = "CONNECT"
     case delete = "DELETE"
     case get = "GET"
