@@ -7,8 +7,8 @@
 //
 
 /*
-Header default code taken from Alamofire, because it was a really smart idea of theirs to default some of the more commonly used headers.
-*/
+ Header default code taken from Alamofire, because it was a really smart idea of theirs to default some of the more commonly used headers.
+ */
 
 import Foundation
 
@@ -52,8 +52,8 @@ extension HTTPHeader {
         
         let podVersion = Bundle(for: CachePolicySetting.self).infoDictionary?["CFBundleShortVersionString"] as? String  ?? "VersionUndetermined"
         let hellfireVersion = "Hellfire/\(podVersion)"
-        
-        let userAgent = "\(executable)/\(appVersion) (\(bundle); build:\(appBuild); \(osNameVersion)) \(hellfireVersion)"
+        let deviceLocale = Locale.current.identifier.replacingOccurrences(of: "_", with: "-")
+        let userAgent = "\(executable)/\(appVersion) (\(bundle); build:\(appBuild); \(osNameVersion); \(deviceLocale) \(hellfireVersion)"
         
         return .userAgent(userAgent)
     }()

@@ -28,6 +28,8 @@ public class ServiceInterface {
         let urlSession = URLSession(configuration: configuration)
         return urlSession
     }()
+    private lazy var defaultHeaders: [HTTPHeader] = [HTTPHeader.defaultUserAgent,
+                                                     HTTPHeader(name: "X-Correlation-ID", value: UUID().uuidString)]
     
     private func statusCodeForResponse(_ response: HTTPURLResponse?, error: Error?) -> StatusCode {
         //We decided we always want to have a value in statusCode.  This means that for non-service errors, we set the statusCode to negative values that are not recognized in the industry.
@@ -69,15 +71,18 @@ public class ServiceInterface {
         urlRequest.timeoutInterval = request.timeoutInterval
         
         //Ask session delegate for any headers for this request.
-        var headers: [HTTPHeader] = self.sessionDelegate?.headerCollection(forRequest: request) ?? []
+        var appHeaders: [HTTPHeader] = self.sessionDelegate?.headerCollection(forRequest: request) ?? []
         
-        //Add diagnostic and trouble shooting correlation Id
-        if (headers.filter { $0.name == "X-Correlation-ID" }).isEmpty {
-            headers.append(HTTPHeader(name: "X-Correlation-ID", value: UUID().uuidString))
+        //Add default headers if the sessions delegate has not already provided an override.
+        let defaultRequestHeaders = self.defaultHeaders + [HTTPHeader.contentType(request.contentType)]
+        defaultRequestHeaders.forEach { (defaultHeader) in
+            if appHeaders.first(where: {$0.name == defaultHeader.name }) == nil {
+                appHeaders.append(defaultHeader)
+            }
         }
         
         //Add headers to URLRequest
-        headers.forEach({ (header) in
+        appHeaders.forEach({ (header) in
             urlRequest.setValue(header.value, forHTTPHeaderField: header.name)
         })
         
