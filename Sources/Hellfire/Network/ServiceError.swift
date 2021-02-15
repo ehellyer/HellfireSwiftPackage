@@ -10,7 +10,15 @@ import Foundation
 
 public class ServiceError: Error {
     
-    public init(request: URLRequest, error: Error?, statusCode: StatusCode, responseBody: Data?, userCancelledRequest: Bool) {
+    
+    /// Default initializer for the `ServiceError` object.
+    /// - Parameters:
+    ///   - request: Sets the url for the service error.
+    ///   - error: Sets the error object if there is one available.
+    ///   - statusCode: Sets `StatusCode` of the network request.
+    ///   - responseBody: Sets response body for the erroring request.
+    ///   - userCancelledRequest: Sets the flag to indicate if the network request was cancelled by the user.  Returns true if the user cancelled the request.
+    internal init(request: URLRequest?, error: Error?, statusCode: StatusCode, responseBody: Data?, userCancelledRequest: Bool) {
         self.request = request
         self.error = error
         self.statusCode = statusCode
@@ -18,18 +26,18 @@ public class ServiceError: Error {
         self.userCancelledRequest = userCancelledRequest
     }
     
-    ///The url for the service error.
-    public let request: URLRequest
+    ///Gets the url request that initiated the service error.
+    public let request: URLRequest?
     
-    ///The error object (if there is one)
+    ///Gets the error object if there is one available.
     public let error: Error?
     
-    ///The status code can be a recognized HTTPStatusCode or one of this frameworks own network status code, defined in HTTPCode.
+    ///Gets `StatusCode` of the network request.
     public let statusCode: StatusCode
     
-    ///The response body for the erroring request.
+    ///Gets response body for the erroring request.  (Sometimes this might contain a HTML error page from a web service.)
     public let responseBody: Data?
     
-    ///Returns true if the user cancelled the request.
+    ///Gets the flag to indicate if the network request was cancelled by the user.  Returns true if the user cancelled the request.
     public let userCancelledRequest: Bool
 }

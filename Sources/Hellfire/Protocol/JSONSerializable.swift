@@ -8,8 +8,8 @@
 
 import Foundation
 
-///EJH - Quick hack for now to make it work.  I need to come up with a better implementation and update this package.
-internal class JSONDateFormatter: DateFormatter {
+///EJH - Quick hack for now to make it work.  I need to come up with a better implementation and update this pod.
+class JSONDateFormatter: DateFormatter {
     
     private var dateFormats: [String] = ["yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ", "MM/dd/yyyy"]
     
@@ -36,7 +36,7 @@ public protocol JSONSerializable: Codable {
     ///Serializes the object into a JSON string representation.  Typically used for debug.
     func toJSONString() -> String?
     
-    ///Serializes the object into a JSON object ot type Dictionary<String, Any>
+    ///Serializes the object into a of type Dictionary<String, Any>
     func toJSONObject() -> Dictionary<String, Any>?
     
     ///Deserializes the JSON data stream into an instance of the object.  Returns nil if the data stream does not match the target object graph, or the object graphs optionallity descriptors.

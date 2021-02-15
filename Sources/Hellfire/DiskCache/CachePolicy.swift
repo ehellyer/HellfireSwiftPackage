@@ -67,7 +67,7 @@ internal class CachePolicySetting: Hashable {
     let policyType: CachePolicyType
     
     init(policyType:CachePolicyType) {
-        
+
         self.policyType = policyType
         self.bytesUsed = 0
         
@@ -75,9 +75,9 @@ internal class CachePolicySetting: Hashable {
         let cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!.absoluteURL
         self.rootPath = cachePath.appendingPathComponent(appName)
     }
-    
+
     let rootPath: URL
-    
+
     var folderURL: URL {
         get {
             return self.rootPath.appendingPathComponent(self.policyType.folderName)

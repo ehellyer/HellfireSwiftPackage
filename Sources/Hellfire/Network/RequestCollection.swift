@@ -8,59 +8,84 @@
 
 import Foundation
 
-internal class RequestCollection {
+public typealias RequestTaskIdentifier = UUID
+
+internal struct RequestCollectionItem {
     
-    //Class setup
+    let identifier: RequestTaskIdentifier
+    
+    var networkRequest: NetworkRequest
+    
+    var urlRequest: URLRequest
+    
+    var requestBodyURL: URL?
+    
+    var sessionTask: URLSessionTask
+}
+
+internal class RequestCollection {
+
+    //MARK: - Class setup
     
     init() {
         let queueLabel = "ThreadSafeMessageQueue." + String.randomString(length: 12)
         self.serialMessageQueue = DispatchQueue(label: queueLabel)
     }
-    
-    //Private API
-    
+
+    //MARK: - Private API
+
     //Queue used to ensure synchronous access to the 'requests' collection and the index 'taskIndex'
     private var serialMessageQueue: DispatchQueue
-    
-    //Type definition of Task and Request.
-    private typealias TaskRequestPair = (task: URLSessionTask, request: URLRequest)
-    
+
     //Collection of concurrent requests in call
-    private var requests = [URLRequest: URLSessionTask]()
+    private var requests = [RequestTaskIdentifier: RequestCollectionItem]()
     
-    //Index of the tasks
-    private var taskIndex = [RequestTaskIdentifier: TaskRequestPair]()
+    private var taskIndex = [URLSessionTask: RequestTaskIdentifier]()
     
-    ///Internal API
+    //MARK: - Internal API
     
-    internal func removeTask(forRequest request: URLRequest) {
+    internal func removeTaskRequest(forTaskIdentifier taskIdentifier: RequestTaskIdentifier) {
         self.serialMessageQueue.sync {
-            if let key = self.requests.removeValue(forKey: request) {
-                let _ = self.taskIndex.removeValue(forKey: key.taskIdentifier)
-                key.cancel()
+            guard let item = self.requests.removeValue(forKey: taskIdentifier) else { return }
+            self.taskIndex.removeValue(forKey: item.sessionTask)
+            if item.sessionTask.state != URLSessionTask.State.completed {
+                item.sessionTask.cancel()
             }
         }
     }
     
-    internal func removeRequest(forTaskIdentifier taskIdentifier: RequestTaskIdentifier) {
+    internal func removeTaskRequest(networkRequest: NetworkRequest) {
+        guard let identifier = self.requests.first(where: { $0.value.networkRequest === networkRequest })?.key else { return }
+        self.removeTaskRequest(forTaskIdentifier: identifier)
+    }
+    
+    internal func add(networkRequest: NetworkRequest, task: URLSessionTask, for request: URLRequest, requestBodyURL: URL?) -> RequestTaskIdentifier {
         self.serialMessageQueue.sync {
-            if let key = self.taskIndex.removeValue(forKey: taskIdentifier) {
-                let request = self.requests.removeValue(forKey: key.request)
-                request?.cancel()
-            }
+            let taskIdentifier = RequestTaskIdentifier()
+            let item = RequestCollectionItem(identifier: taskIdentifier, networkRequest: networkRequest, urlRequest: request, requestBodyURL: requestBodyURL, sessionTask: task)
+            let _ = self.requests.updateValue(item, forKey: taskIdentifier)
+            let _ = self.taskIndex.updateValue(taskIdentifier, forKey: task)
+            return taskIdentifier
         }
     }
     
-    internal func add(request: URLRequest, task: URLSessionTask) {
+    internal func allTaskIdentifiers() -> [RequestTaskIdentifier] {
         self.serialMessageQueue.sync {
-            let _ = self.requests.updateValue(task, forKey: request)
-            let _ = self.taskIndex.updateValue((task, request), forKey: task.taskIdentifier)
+            let taskIdentifiers = self.requests.compactMap { $0.key }
+            return taskIdentifiers
+        }
+    }
+
+    internal func taskRequestItem(forTaskIdentifier taskIdentifier: RequestTaskIdentifier) -> RequestCollectionItem? {
+        self.serialMessageQueue.sync {
+            return self.requests[taskIdentifier]
         }
     }
     
-    internal func allTasks() -> [RequestTaskIdentifier] {
-        let taskIdentifiers = self.taskIndex.compactMap { $0.key }
-        return taskIdentifiers
+    internal func taskRequestItem(forSessionTask urlSessionTask: URLSessionTask) -> RequestCollectionItem? {
+        self.serialMessageQueue.sync {
+            guard let taskIdentifier = self.taskIndex[urlSessionTask] else { return nil }
+            return self.requests[taskIdentifier]
+        }
     }
 }
-

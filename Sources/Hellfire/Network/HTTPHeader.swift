@@ -9,7 +9,7 @@
 import Foundation
 
 ///Represents a name and value of an HTTP header.
-public struct HTTPHeader: Hashable, JSONSerializable {
+public struct HTTPHeader: JSONSerializable {
     
     public init(name: String, value: String) {
         self.name = name

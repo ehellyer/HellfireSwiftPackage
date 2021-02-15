@@ -7,8 +7,8 @@
 //
 
 /*
- Header default code taken from Alamofire, because it was a really smart idea of theirs to default some of the more commonly used headers.
- */
+Header default code based upon code taken from Alamofire.
+*/
 
 import Foundation
 
@@ -97,6 +97,21 @@ extension HTTPHeader {
     ///Returns a `User-Agent` header with the specified string value.
     public static func userAgent(_ value: String) -> HTTPHeader {
         HTTPHeader(name: "User-Agent", value: value)
+    }
+
+    ///Returns the header as a string as used by a request.
+    public var stringEncoding: String {
+        return "\(self.name): \(self.value)"
+    }
+}
+
+extension HTTPHeader: Hashable {
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+    }
+    
+    public static func == (lhs: HTTPHeader, rhs: HTTPHeader) -> Bool {
+        return lhs.name == rhs.name
     }
 }
 

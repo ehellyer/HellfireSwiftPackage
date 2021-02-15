@@ -144,8 +144,7 @@ open class NetworkReachabilityManager {
     /// - returns: `true` if listening was started successfully, `false` otherwise.
     @discardableResult
     open func startListening() -> Bool {
-        var context = SCNetworkReachabilityContext(version: 0, info: nil, retain: nil, release: nil, copyDescription: nil)
-        context.info = Unmanaged.passUnretained(self).toOpaque()
+        var context = SCNetworkReachabilityContext(version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil)
         
         let callbackEnabled = SCNetworkReachabilitySetCallback(
             reachability,

@@ -8,7 +8,7 @@
 
 import Foundation
 
-internal extension String {
+public extension String {
     
     //Generates a random string of length
     static func randomString(length: Int) -> String {

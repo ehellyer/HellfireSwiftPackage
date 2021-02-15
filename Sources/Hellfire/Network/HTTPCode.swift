@@ -7,10 +7,11 @@
 //
 
 import Foundation
+import CoreFoundation
 
 public typealias StatusCode = Int
 
-public enum HTTPCode: Int, JSONSerializable {
+public enum HTTPCode: StatusCode, JSONSerializable {
     //2xx Success codes
     case ok = 200
     case created = 201
@@ -53,21 +54,17 @@ public enum HTTPCode: Int, JSONSerializable {
     case serviceUnavailable = 503
     case gatewayTimeout = 504
     case httpVersionNotSupported = 505
-    
-    //Custom codes representing client side errors, client to server errors, networking layer error, where an industry standard HTTP status response codes do not apply.  The ServiceInterface will always return a status code so that we can reliably detect issues.
-    case generalError = -666
-    case userCancelledRequest = -999
-    case connectionMakeTimeout = -1001
-    case hostNameNotFound = -1003
-    case unableToCreateSSLSession = -1200
-    
+}
+
+extension HTTPCode {
+
     ///Returns true if status code is in the range of 200...299.
     public static func isOk(statusCode: StatusCode) -> Bool {
         return (200...299 ~= statusCode)
     }
     
-    ///Returns true when the status code == -999, which is the frameworks custom status code for HTTPCode.userCancelledRequest.
+    ///Returns true when the status code == -999, which is the value of NSURLErrorCancelled defined in 'URL Loading System Error Codes'.
     internal static func wasRequestCancelled(statusCode: StatusCode) -> Bool  {
-        return (statusCode == HTTPCode.userCancelledRequest.rawValue)
+        return (statusCode == NSURLErrorCancelled)
     }
 }
