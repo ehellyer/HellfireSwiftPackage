@@ -56,7 +56,7 @@ extension NetworkRequest {
     
     /// Creates a new instance of the `NetworkRequest` object when it is used for a background upload task.  The timeout is set to 10 minutes and the caching option is set to do not cache.
     /// - Parameter request: Original `NetworkRequest`
-    /// - Returns: New `NetworkRequest` with timeoutInterval and cachePolicyType overriden.
+    /// - Returns: New `NetworkRequest` with timeoutInterval and cachePolicyType overridden.
     internal static func uploadRequest(fromRequest request: NetworkRequest) -> NetworkRequest {
         return NetworkRequest(url: request.url,
                               method: request.method,

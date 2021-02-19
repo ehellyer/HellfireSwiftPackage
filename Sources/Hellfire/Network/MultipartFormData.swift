@@ -14,7 +14,7 @@ import CoreServices
 
 /// MultipartFormData is used to construct the body of a multipart/form-data request.
 ///
-/// For more information on `multipart/form-data` in general, please refer to RFC-7578 (which superseds RFC-2388) and RFC-2045 specs as well and the w3 form documentation.
+/// For more information on `multipart/form-data` in general, please refer to RFC-7578 (which supersedes RFC-2388) and RFC-2045 specs as well and the w3 form documentation.
 /// - https://tools.ietf.org/html/rfc7578
 /// - https://www.ietf.org/rfc/rfc2388.txt
 /// - https://www.ietf.org/rfc/rfc2045.txt

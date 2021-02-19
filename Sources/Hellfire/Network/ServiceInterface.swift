@@ -33,6 +33,7 @@ public class ServiceInterface: NSObject {
     }()
     private lazy var backgroundSession: URLSession = {
         let operationQueue = OperationQueue()
+        //OperationQueue.defaultMaxConcurrentOperationCount lets the system automatically determine concurrent tasks based on current system resources.
         operationQueue.maxConcurrentOperationCount = OperationQueue.defaultMaxConcurrentOperationCount
         operationQueue.qualityOfService = .userInteractive
 
@@ -59,7 +60,7 @@ public class ServiceInterface: NSObject {
     private func statusCodeForResponse(_ response: URLResponse?, error: Error?) -> StatusCode {
         /*
          In Hellfire, we always want to have a value in statusCode for easier error detection.
-         This means that for non URL reponse errors, we set the statusCode to the negative values of 'URL Loading System Error Codes'.
+         This means that for non URL response errors, we set the statusCode to the negative values of 'URL Loading System Error Codes'.
          */
         let statusCode: StatusCode = (response as? HTTPURLResponse)?.statusCode ??
             (error as NSError?)?.code ??
@@ -168,12 +169,6 @@ public class ServiceInterface: NSObject {
         print("\(String(describing: type(of: self))) has deallocated. - \(#function)")
         #endif
     }
-
-    
-    //TODO: Finish the injection of this configuration.
-//    public init(backgroundSessionConfiguration: URLSessionConfiguration) {
-//        self.backgroundSession.configuration = backgroundSessionConfiguration
-//    }
     
     ///Gets or sets the handler for the reachability status change events.
     public var reachabilityHandler: ReachabilityHandler?
@@ -381,9 +376,7 @@ extension ServiceInterface: URLSessionTaskDelegate {
 extension ServiceInterface: URLSessionDelegate {
     
     public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-        DispatchQueue.main.async { [weak self] in
-            self?.sessionDelegate?.backgroundSessionDidFinishEvents(session: session)
-        }
+        self.sessionDelegate?.backgroundSessionDidFinishEvents(session: session)
     }
 
     public func urlSession(_ session: URLSession,
