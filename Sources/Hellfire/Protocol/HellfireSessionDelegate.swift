@@ -17,13 +17,12 @@ public protocol HellfireSessionDelegate: class {
     func headerCollection(forRequest request: NetworkRequest) -> [HTTPHeader]?
     
     /// A  optional global way of telling the delegate the returned response headers for a given request.
-    /// - Note: Response headers are also incuded in the `NetworkResponse` of a successfull `NetworkRequest`
+    /// - Note: Response headers are also included in the `NetworkResponse` of a successful `NetworkRequest`
     /// - Parameters:
     ///   - headers: An array of headers returned in the response.
     ///   - forRequest: The `NetworkRequest` that initiated this response.
     func responseHeaders(headers: [HTTPHeader],
                          forRequest request: NetworkRequest)
-    
     
     /// Tells the URL session that the session has been invalidated.
     ///
@@ -45,7 +44,6 @@ public protocol HellfireSessionDelegate: class {
     ///   - data: A data object containing the transferred data.
     func session(_ session: URLSession,
                  dataTask: URLSessionDataTask,
-                 requestTaskIdentifier: RequestTaskIdentifier?,
                  didReceive data: Data)
     
     /// Tells the delegate that the background `URLSessionUploadTask` finished transferring data in the background.
@@ -57,14 +55,12 @@ public protocol HellfireSessionDelegate: class {
     ///   - task: URLSessionTask for this response.
     ///   - requestTaskIdentifier: Unique task identifier for the URLSessionTask.
     ///   - result: Represents the success or failure result of a `NetworkRequest`.
-    func backgroundTask(_ task: URLSessionTask?,
-                        requestTaskIdentifier: RequestTaskIdentifier?,
-                        didCompleteWithResult result: RequestResult?)
+    func backgroundTask(_ task: URLSessionTask,
+                        didCompleteWithResult result: RequestResult)
     
     /// Sent periodically to notify the delegate of upload progress.  This information is also available as properties of the task.
     /// - Parameters:
     ///   - task: URLSessionTask for this response.
-    ///   - requestIdentifier: Unique identifier for the URLSessionTask.
     ///   - bytesSent: Number of bytes sent since the last time this delegate was called.
     ///   - totalBytesSent: The total number of bytes sent so far.
     ///   - totalBytesExpectedToSend: The expected length of the body data. The URL loading system can determine the length of the upload data in three ways:
@@ -74,11 +70,9 @@ public protocol HellfireSessionDelegate: class {
     ///
     ///     Otherwise, the value is [NSURLSessionTransferSizeUnknown](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2Fnsurlsessiontransfersizeunknown) (-1) if you provided a stream or body data object, or zero (0) if you did not.
     func backgroundTask(_ task: URLSessionTask,
-                        forRequestIdentifier requestIdentifier: RequestTaskIdentifier,
                         didSendBytes bytesSent: Int,
                         totalBytesSent: Int,
                         totalBytesExpectedToSend: Int)
-    
     
     /// Requests credentials from the delegate in response to a session-level authentication request from the remote server.
     ///
@@ -101,29 +95,22 @@ public protocol HellfireSessionDelegate: class {
                  didReceive challenge: URLAuthenticationChallenge,
                  completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
     
-    
     //Handles task specific challenges.  e.g. Username/Password
     func session(_ session: URLSession,
                     task: URLSessionTask,
                     didReceive challenge: URLAuthenticationChallenge,
                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
     
-
-    
-
-    
-    
     /// Tells the delegate that all messages enqueued for a session have been delivered.
     ///
     /// In iOS, when a background transfer completes or requires credentials, if your app is no longer running, your app is automatically relaunched in the background, and the app’s UIApplicationDelegate is sent an application(_:handleEventsForBackgroundURLSession:completionHandler:) message.
     /// This call contains the identifier of the session that caused your app to be launched. You should then store that completion handler before creating a background configuration object with the same identifier, and creating a session with that configuration.
-    /// The newly created session is automatically reassociated with ongoing background activity.
+    /// The newly created session is automatically associated with ongoing background activity.
     ///
     /// When your app later receives a urlSessionDidFinishEvents(forBackgroundURLSession:) message, this indicates that all messages previously enqueued for this session have been delivered, and that it is now safe to invoke the previously stored completion handler or to begin any internal updates that may result in invoking the completion handler.
     ///
     /// - Parameter session: The session that no longer has any outstanding requests.
     func backgroundSessionDidFinishEvents(session: URLSession)
-    
 }
 
 //Protocol extension that enables default action for protocol implementation when the delegate does not implement them.
@@ -142,29 +129,23 @@ public extension HellfireSessionDelegate {
     
     func session(_ session: URLSession,
                  dataTask: URLSessionDataTask,
-                 requestTaskIdentifier: RequestTaskIdentifier?,
                  didReceive data: Data) { }
     
-    func backgroundTask(_ task: URLSessionTask?,
-                        requestTaskIdentifier: RequestTaskIdentifier?,
-                        didCompleteWithResult result: RequestResult?) { }
+    func backgroundTask(_ task: URLSessionTask,
+                        didCompleteWithResult result: RequestResult) { }
     
     func backgroundTask(_ task: URLSessionTask,
-                        forRequestIdentifier requestIdentifier: RequestTaskIdentifier,
                         didSendBytes bytesSent: Int,
                         totalBytesSent: Int,
-                        totalBytesExpectedToSend: Int) {}
+                        totalBytesExpectedToSend: Int) { }
 
     func session(_ session: URLSession,
                  task: URLSessionTask,
                  didReceive challenge: URLAuthenticationChallenge,
                  completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        print("===== Task auth challenge delegate callback =====")
         if challenge.previousFailureCount > 0 {
-            print("===== Cancel session auth challenge due to previous failure =====")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else {
-            print("===== Perform default handling of session auth with nil credentials =====")
             completionHandler(.performDefaultHandling, nil)
         }
     }
@@ -172,34 +153,12 @@ public extension HellfireSessionDelegate {
     func session(_ session: URLSession,
                  didReceive challenge: URLAuthenticationChallenge,
                  completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        print("===== Session auth challenge delegate callback =====")
         if challenge.previousFailureCount > 0 {
-            print("===== Cancel session auth challenge due to previous failure =====")
             completionHandler(.cancelAuthenticationChallenge, nil)
         } else {
-            guard let trust = challenge.protectionSpace.serverTrust,
-                  challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-                  challenge.protectionSpace.protocol == "https",
-                  challenge.protectionSpace.receivesCredentialSecurely == true
-            else {
-                print("===== Perform default handling of session auth with nil credentials =====")
-                completionHandler(.performDefaultHandling, nil)
-                return
-            }
-
-            var urlCredential: URLCredential?
-            var authChallengeDispostion: URLSession.AuthChallengeDisposition = URLSession.AuthChallengeDisposition.rejectProtectionSpace
-            
-            //if challenge.protectionSpace.host == self.webServiceResolver.host {
-            urlCredential = URLCredential(trust: trust)
-            authChallengeDispostion = URLSession.AuthChallengeDisposition.performDefaultHandling
-            //}
-            print("===== Perform default handling of session auth with server trust credentials =====")
-            completionHandler(authChallengeDispostion, urlCredential)
+            completionHandler(.performDefaultHandling, nil)
         }
     }
-    
-    
     
     func backgroundSessionDidFinishEvents(session: URLSession) { }
 }

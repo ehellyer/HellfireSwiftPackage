@@ -8,21 +8,41 @@
 
 import Foundation
 
+public typealias RequestTaskIdentifier = UUID
 public typealias ReachabilityHandler = (ReachabilityStatus) -> Void
 public typealias ServiceErrorHandler = (ServiceError) -> Void
 public typealias TaskResult = (RequestResult) -> Void
 
-/// Only one instance per app should be created.  However, rather than trying to enforce this via a singleton, its up to the app developer when to create multiple instances.
-/// Be aware that DiskCache storage is shared between multiple ServiceInterface instances.  Although a unique hash insertion key will be created, storage size will be shared.
+/// Only one instance per app should be created.  However, rather than trying to enforce this via a singleton, it's up to the app developer when to create multiple instances.
+/// Be aware that DiskCache storage, data task URLSession and background URLSession are shared between multiple ServiceInterface instances.
+/// Concerning DiskCache, although a unique hash insertion key will be created, storage will be shared between the instances.
 public class ServiceInterface: NSObject {
     
-    //MARK: - Private API
+    //MARK: - ServiceInterface overrides API
+    
+    deinit {
+        #if DEBUG
+        print("\(String(describing: type(of: self))) has deallocated. - \(#function)")
+        #endif
+    }
+    
+    public required override init() {
+        self.backgroundSessionIdentifier = "Hellfire.BackgroundUrlSession"
+        super.init()
+    }
+    
+    public required init(backgroundSessionIdentifier: String) {
+        self.backgroundSessionIdentifier = backgroundSessionIdentifier
+        super.init()
+    }
+    
+    //MARK: - Private Property API
     
     private var reachabilityManager: NetworkReachabilityManager?
     private var privateReachabilityHost: String?
-    private lazy var requestCollection = RequestCollection()
     private lazy var diskCache = DiskCache()
-    private lazy var backgroundSessionIdentifier: String = "Hellfire.BackgroundUrlSession"
+    private var backgroundSessionIdentifier: String
+    
     private lazy var dataTaskSession: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.httpAdditionalHeaders = self.defaultRequestHeaders
@@ -31,12 +51,13 @@ public class ServiceInterface: NSObject {
         let urlSession = URLSession(configuration: configuration)
         return urlSession
     }()
+    
     private lazy var backgroundSession: URLSession = {
         let operationQueue = OperationQueue()
-        //OperationQueue.defaultMaxConcurrentOperationCount lets the system automatically determine concurrent tasks based on current system resources.
+        //Allow the system automatically determine concurrent tasks based on current system resources. (via OperationQueue.defaultMaxConcurrentOperationCount)
         operationQueue.maxConcurrentOperationCount = OperationQueue.defaultMaxConcurrentOperationCount
         operationQueue.qualityOfService = .userInteractive
-
+        
         let configuration = URLSessionConfiguration.background(withIdentifier: self.backgroundSessionIdentifier)
         configuration.httpAdditionalHeaders = self.defaultRequestHeaders
         configuration.requestCachePolicy = .reloadIgnoringCacheData
@@ -46,16 +67,17 @@ public class ServiceInterface: NSObject {
         configuration.shouldUseExtendedBackgroundIdleMode = true
         //configuration.timeoutIntervalForRequest = {For now using default - 60 seconds}
         //configuration.timeoutIntervalForResource = {For now using default - 7 days}
-        
         let urlSession = URLSession(configuration: configuration, delegate: self, delegateQueue: operationQueue)
-
         return urlSession
     }()
+    
     private lazy var defaultRequestHeaders: [AnyHashable: Any] = {
         var headers = [AnyHashable: Any]()
         [HTTPHeader.defaultUserAgent].forEach { headers[$0.name] = $0.value }
         return headers
     }()
+    
+    //MARK: - Private Func API
     
     private func statusCodeForResponse(_ response: URLResponse?, error: Error?) -> StatusCode {
         /*
@@ -75,9 +97,9 @@ public class ServiceInterface: NSObject {
         return httpHeaders
     }
     
-    private func createServiceError(data: Data?, statusCode: StatusCode, error: Error?, request: URLRequest) -> ServiceError {
+    private func createServiceError(data: Data?, statusCode: StatusCode, error: Error?, requestURL: URL?) -> ServiceError {
         let requestCancelled = HTTPCode.wasRequestCancelled(statusCode: statusCode)
-        let serviceError = ServiceError(request: request, error: error, statusCode: statusCode, responseBody: data, userCancelledRequest: requestCancelled)
+        let serviceError = ServiceError(requestURL: requestURL, error: error, statusCode: statusCode, responseBody: data, userCancelledRequest: requestCancelled)
         self.serviceErrorHandler?(serviceError)
         return serviceError
     }
@@ -136,7 +158,7 @@ public class ServiceInterface: NSObject {
         self.reachabilityManager?.startListening()
     }
     
-    private func taskResponseHandler(request: NetworkRequest, urlRequest: URLRequest, completion: @escaping TaskResult, data: Data?, response: URLResponse?, error: Error?) {
+    private func taskResponseHandler(request: NetworkRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping TaskResult) {
         let statusCode = self.statusCodeForResponse(response, error: error)
         
         if let responseData = data, HTTPCode.isOk(statusCode: statusCode) {
@@ -146,29 +168,20 @@ public class ServiceInterface: NSObject {
         //Send back response headers to delegate.  (Headers will be additionally included with the NetworkResponse.)
         let responseHeaders: [HTTPHeader] = self.responseHeaders(response)
         self.sessionDelegate?.responseHeaders(headers: responseHeaders, forRequest: request)
-        
-        //Remove task from request collection
-        self.requestCollection.removeTaskRequest(networkRequest: request)
-        
+
         //Call completion block
         DispatchQueue.main.async {
             if HTTPCode.isOk(statusCode: statusCode) {
                 let dataResponse = NetworkResponse(headers: responseHeaders, body: data, statusCode: statusCode)
                 completion(.success(dataResponse))
             } else {
-                let serviceError = self.createServiceError(data: data, statusCode: statusCode, error: error, request: urlRequest)
+                let serviceError = self.createServiceError(data: data, statusCode: statusCode, error: error, requestURL: request.url)
                 completion(.failure(serviceError))
             }
         }
     }
     
-    //MARK: - Public API
-    
-    deinit {
-        #if DEBUG
-        print("\(String(describing: type(of: self))) has deallocated. - \(#function)")
-        #endif
-    }
+    //MARK: - Public Property API
     
     ///Gets or sets the handler for the reachability status change events.
     public var reachabilityHandler: ReachabilityHandler?
@@ -176,12 +189,11 @@ public class ServiceInterface: NSObject {
     ///Gets or sets the handler for the service error handler
     public var serviceErrorHandler: ServiceErrorHandler?
     
-    /**
-     Gets or sets the reachability host (e.g. "www.apple.com").
-     Setting the host to some value starts the listener.
-     Setting the host to nil will stop the listener.
-     IMPORTANT NOTE: You must set self.reachabilityHost after setting self.reachabilityHandler, otherwise reachability manager will not start listening for network change events.
-     */
+    ///  Gets or sets the reachability host (e.g. "www.apple.com").
+    ///
+    ///  Setting the host to some value starts the listener.
+    ///  Setting the host to nil will stop the listener.
+    ///  IMPORTANT NOTE: You must set self.reachabilityHost after setting self.reachabilityHandler, otherwise reachability manager will not start listening for network change events.
     public var reachabilityHost: String? {
         get {
             return self.privateReachabilityHost
@@ -195,44 +207,45 @@ public class ServiceInterface: NSObject {
     }
     
     public weak var sessionDelegate: HellfireSessionDelegate?
-   
-    public func executeUpload(_ request: MultipartRequest) -> RequestTaskIdentifier? {
+    
+    //MARK: - Public Func API
+    
+    /// Executes the `MultipartRequest` request asynchronously as a [URLSessionUploadTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionUploadTask).
+    ///
+    /// Upload tasks are run on a background URLSession.  The default URLSession identifier for this background session is Hellfire.BackgroundUrlSession.  A custom background session identifier can be passed in on init.
+    /// - Parameter request: The multipart form data request that is to be executed.
+    /// - Returns: Unique task identifier for the [URLSessionUploadTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionUploadTask). This identifier can be used to cancel the network request.
+    public func executeUpload(_ request: MultipartRequest) throws -> RequestTaskIdentifier? {
         do {
-            let result = try request.build()
-            var urlRequest = result.request
+            let requestComponents = try request.build()
+            var urlRequest = requestComponents.urlRequest
             
             //Ask session delegate for additional headers or updates to headers for this request.
             let appHeaders: [HTTPHeader] = self.sessionDelegate?.headerCollection(forRequest: request) ?? []
             appHeaders.forEach({ (header) in
-                urlRequest.setValue(header.value,
-                                    forHTTPHeaderField: header.name)
+                urlRequest.setValue(header.value, forHTTPHeaderField: header.name)
             })
             
-            let task = self.backgroundSession.uploadTask(with: urlRequest,
-                                                         fromFile: result.requestBodyURL)
-            let taskIdentifier = self.requestCollection.add(networkRequest: request,
-                                                            task: task,
-                                                            for: urlRequest,
-                                                            requestBodyURL: result.requestBodyURL)
+            let task = self.backgroundSession.uploadTask(with: urlRequest, fromFile: requestComponents.requestBody)
+            let taskIdentifier = UUID()
+            task.requestItem = RequestItem(identifier: taskIdentifier, networkRequest: request)
+            task.taskDescription = taskIdentifier.uuidString
             task.resume()
             return taskIdentifier
         } catch (let error) {
-            let serviceError = ServiceError(request: nil,
-                                            error: error,
-                                            statusCode: -666,
-                                            responseBody: nil,
-                                            userCancelledRequest: false)
-            self.sessionDelegate?.backgroundTask(nil,
-                                                 requestTaskIdentifier: nil,
-                                                 didCompleteWithResult: .failure(serviceError))
+            let serviceError = self.createServiceError(data: error.localizedDescription.data(using: .utf8),
+                                                       statusCode: -666,
+                                                       error: error,
+                                                       requestURL: request.url)
+            
+            throw HellfireError.ServiceRequestError.unableToCreateTask(result: .failure(serviceError))
         }
-        return nil
     }
     
     ///Executes the network request asynchronously as a [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask), intended to be a relatively short request.
+    ///
     ///Cached and network responses are called back by dispatching to the main thread and calling the completion block.  For cached responses, the network response object will have a response header added with the name `CachedResponse` with a value of `true`.
     ///A `RequestTaskIdentifier` is returned for a NetworkRequest that is dispatched to URL session.  This identifier can be used to cancel the network request.
-    ///
     /// - Parameters:
     ///     - request: The network request to be executed
     ///     - completion: The completion function to be called with the response.
@@ -244,38 +257,61 @@ public class ServiceInterface: NSObject {
         let task = self.dataTaskSession.dataTask(with: urlRequest) { [weak self] data, response, error in
             guard let strongSelf = self else { return }
             strongSelf.taskResponseHandler(request: request,
-                                           urlRequest: urlRequest,
-                                           completion: completion,
                                            data: data,
                                            response: response,
-                                           error: error)
+                                           error: error,
+                                           completion: completion)
         }
         
-        let taskIdentifier = self.requestCollection.add(networkRequest: request,
-                                                        task: task,
-                                                        for: urlRequest,
-                                                        requestBodyURL: nil)
+        let taskIdentifier = UUID()
+        task.requestItem = RequestItem(identifier: taskIdentifier, networkRequest: request)
+        task.taskDescription = taskIdentifier.uuidString
         task.resume()
-        
         return taskIdentifier
+    }
+    
+    /// Gets all the tasks currently running on the background session.
+    /// - Parameter completion: Returns a tuple of three arrays via an asynchronous completion block. ([URLSessionDataTask], [URLSessionUploadTask], [URLSessionDownloadTask])
+    public func getBackgroundTasks(completion: @escaping ([URLSessionDataTask], [URLSessionUploadTask], [URLSessionDownloadTask]) -> Void) {
+        self.backgroundSession.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) in
+            completion(dataTasks, uploadTasks, downloadTasks)
+        }
+    }
+  
+    ///Cancels the network request for the specified request task identifier.
+    ///
+    /// - Parameters:
+    ///     - taskIdentifier: Unique task identifier for the URLSessionTask.
+    public func cancelUploadRequest(taskIdentifier: RequestTaskIdentifier?) {
+        guard let taskId = taskIdentifier else { return }
+        self.backgroundSession.getAllTasks { (backgroundSessionTasks) in
+            if let task = backgroundSessionTasks.first(where: { $0.requestItem?.identifier == taskId }) {
+                task.cancel()
+            }
+        }
     }
     
     ///Cancels the network request for the specified request task identifier.
     ///
     /// - Parameters:
     ///     - taskIdentifier: Unique task identifier for the URLSessionTask.
-    public func cancelRequest(taskIdentifier: RequestTaskIdentifier?) {
+    public func cancelDataRequest(taskIdentifier: RequestTaskIdentifier?) {
         guard let taskId = taskIdentifier else { return }
-        let item = self.requestCollection.taskRequestItem(forTaskIdentifier: taskId)
-        item?.sessionTask.cancel()
-        self.requestCollection.removeTaskRequest(forTaskIdentifier: taskId)
+
+        self.dataTaskSession.getAllTasks { (dataSessionTasks) in
+            if let task = dataSessionTasks.first(where: { $0.requestItem?.identifier == taskId }) {
+                task.cancel()
+            }
+        }
     }
     
-    ///Cancels all current network requests.
+    ///Cancels all current network requests on all sessions.
     public func cancelAllCurrentRequests() {
-        let taskIdentifiers = self.requestCollection.allTaskIdentifiers()
-        taskIdentifiers.forEach { (taskIdentifier) in
-            self.cancelRequest(taskIdentifier: taskIdentifier)
+        self.backgroundSession.getAllTasks { (backgroundSessionTasks) in
+            backgroundSessionTasks.forEach { $0.cancel() }
+        }
+        self.dataTaskSession.getAllTasks { (dataSessionTasks) in
+            dataSessionTasks.forEach { $0.cancel() }
         }
     }
     
@@ -293,50 +329,41 @@ public class ServiceInterface: NSObject {
 
 //MARK: - URLSessionDataDelegate protocol
 extension ServiceInterface: URLSessionDataDelegate {
-
+    
     public func urlSession(_ session: URLSession,
                            dataTask: URLSessionDataTask,
                            didReceive data: Data) {
-        guard let taskRequestItem = self.requestCollection.taskRequestItem(forSessionTask: dataTask) else { return }
         
         self.sessionDelegate?.session(session,
                                       dataTask: dataTask,
-                                      requestTaskIdentifier: taskRequestItem.identifier,
                                       didReceive: data)
     }
     
     public func urlSession(_ session: URLSession,
                            task: URLSessionTask,
                            didCompleteWithError error: Error?) {
-        guard let taskRequestItem = self.requestCollection.taskRequestItem(forSessionTask: task) else { return }
-
-        let statusCode = self.statusCodeForResponse(task.response,
-                                                    error: error)
+        let statusCode = self.statusCodeForResponse(task.response, error: error)
         let responseHeaders: [HTTPHeader] = self.responseHeaders(task.response)
+        var result: RequestResult
         
         if HTTPCode.isOk(statusCode: statusCode) {
             let dataResponse = NetworkResponse(headers: responseHeaders,
                                                body: nil,
                                                statusCode: statusCode)
-            DispatchQueue.main.async { [weak self] in
-                self?.sessionDelegate?.backgroundTask(task,
-                                                      requestTaskIdentifier: taskRequestItem.identifier,
-                                                      didCompleteWithResult: .success(dataResponse))
-            }
+            result = .success(dataResponse)
         } else {
             let serviceError = self.createServiceError(data: nil,
                                                        statusCode: statusCode,
                                                        error: error,
-                                                       request: taskRequestItem.urlRequest)
-            DispatchQueue.main.async { [weak self] in
-                self?.sessionDelegate?.backgroundTask(task,
-                                                      requestTaskIdentifier: taskRequestItem.identifier,
-                                                      didCompleteWithResult: .failure(serviceError))
-            }
+                                                       requestURL: task.originalRequest?.url)
+            result = .failure(serviceError)
         }
         
-        (taskRequestItem.networkRequest as? MultipartRequest)?.cleanUpHttpBody()
-        self.requestCollection.removeTaskRequest(forTaskIdentifier: taskRequestItem.identifier)
+        DispatchQueue.main.async { [weak self] in
+            self?.sessionDelegate?.backgroundTask(task, didCompleteWithResult: result)
+        }
+        
+        (task.requestItem?.networkRequest as? MultipartRequest)?.cleanUpHttpBody()
     }
     
     public func urlSession(_ session: URLSession,
@@ -344,11 +371,8 @@ extension ServiceInterface: URLSessionDataDelegate {
                            didSendBodyData bytesSent: Int64,
                            totalBytesSent: Int64,
                            totalBytesExpectedToSend: Int64) {
-        guard let taskRequestItem = self.requestCollection.taskRequestItem(forSessionTask: task) else { return }
-
         DispatchQueue.main.async { [weak self] in
             self?.sessionDelegate?.backgroundTask(task,
-                                                  forRequestIdentifier: taskRequestItem.identifier,
                                                   didSendBytes: Int(bytesSent),
                                                   totalBytesSent: Int(totalBytesSent),
                                                   totalBytesExpectedToSend: Int(totalBytesExpectedToSend))
@@ -356,10 +380,9 @@ extension ServiceInterface: URLSessionDataDelegate {
     }
 }
 
-
 //MARK: - URLSessionTaskDelegate protocol
 extension ServiceInterface: URLSessionTaskDelegate {
-
+    
     public func urlSession(_ session: URLSession,
                            task: URLSessionTask,
                            didReceive challenge: URLAuthenticationChallenge,
@@ -378,13 +401,13 @@ extension ServiceInterface: URLSessionDelegate {
     public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         self.sessionDelegate?.backgroundSessionDidFinishEvents(session: session)
     }
-
+    
     public func urlSession(_ session: URLSession,
                            didBecomeInvalidWithError error: Error?) {
         self.sessionDelegate?.session(session,
                                       didBecomeInvalidWithError: error)
     }
-
+    
     public func urlSession(_ session: URLSession,
                            didReceive challenge: URLAuthenticationChallenge,
                            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {

@@ -14,7 +14,7 @@ final class HellfireTests: XCTestCase {
     }
 
     
-    //Mark: - Testing JSONSerializeable
+    //Mark: - Testing JSONSerializable
     
     func testPerson() {
         let jsonStr = """
@@ -28,7 +28,7 @@ final class HellfireTests: XCTestCase {
         let person = Person.initialize(jsonData: jsonData)
         XCTAssert(person?.firstName == "Edward", "Failed to map external property to internal property on Person.")
         XCTAssert(person?.lastName == "Hellyer", "Failed to map external property to internal property on Person.")
-        XCTAssert(person?.isAwesome == true, "Failed to instanciate Person from JSON data.")
+        XCTAssert(person?.isAwesome == true, "Failed to instantiate Person from JSON data.")
     }
     
 //    func testBirthdayDate() {

@@ -223,6 +223,7 @@ public class MultipartFormData {
         self.finalBoundary = Data("\(EncodingHelper.crlf)--\(self.boundary)--\(EncodingHelper.crlf)".utf8)
     }
     
+    
     //MARK: - Public API
     
     /// The boundary string used to separate the multipart form components in a `multipart/form-data` request.
@@ -231,12 +232,14 @@ public class MultipartFormData {
     /// Gets the file manager used for file operations.  Injected in the init, will default to FileManager.default if not provided.
     public let fileManager: FileManager
     
-    /// Returns the `Content-Type` header as `multipart/form-data`, including the boundry identifier.
+    /// Returns the `Content-Type` header as `multipart/form-data`, including the boundary identifier.
     public lazy var contentType: HTTPHeader = HTTPHeader.contentType("multipart/form-data; boundary=\(self.boundary)")
 
-    /// Returns the total byte count of all the form parts used to generate the `multipart/form-data` not including the boundaries.
-    public var contentLength: UInt64 { self.formParts.reduce(0) { $0 + $1.contentLength } }
-    
+    /// Returns the `Content-Length` header with a total byte count of all the form parts used to generate the `multipart/form-data` not including the boundaries.
+    public var contentLength: HTTPHeader {
+        let _contentLength: UInt64 = self.formParts.reduce(0) { $0 + $1.contentLength }
+        return HTTPHeader.contentLength(_contentLength)
+    }
     
     /// Encode the MultipartFormData form parts as an InputStream.
     /// - Throws: An `HellfireError` if encoding encounters an error.
@@ -265,7 +268,6 @@ public class MultipartFormData {
         
         return InputStreamsSerializer(inputStreams: streams)
     }
-        
     
     /// Encodes all appended form parts into a single `Data` value.
     ///

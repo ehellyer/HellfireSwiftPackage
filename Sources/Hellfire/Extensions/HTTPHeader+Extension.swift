@@ -78,6 +78,11 @@ extension HTTPHeader {
         HTTPHeader(name: "Content-Type", value: value)
     }
     
+    ///Returns a `ContentLength` header with the specified string value.
+    public static func contentLength(_ value: UInt64) -> HTTPHeader {
+        HTTPHeader(name: "Content-Length", value: "\(value)")
+    }
+    
     ///Returns a `Basic` `Authorization` header using the `username` and `password` provided.
     public static func authorization(username: String, password: String) -> HTTPHeader {
         let credential = Data("\(username):\(password)".utf8).base64EncodedString()

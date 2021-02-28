@@ -39,10 +39,10 @@ public protocol JSONSerializable: Codable {
     ///Serializes the object into a of type Dictionary<String, Any>
     func toJSONObject() -> Dictionary<String, Any>?
     
-    ///Deserializes the JSON data stream into an instance of the object.  Returns nil if the data stream does not match the target object graph, or the object graphs optionallity descriptors.
+    ///Deserializes the JSON data stream into an instance of the object.  Returns nil if the data stream does not match the target object graph, or the object graphs optionality descriptors.
     static func initialize(jsonData: Data?) -> Self?
     
-    ///Deserializes the dictionary into an instance of the object.  Returns nil if the dictionary representation does not match the target object graph, or the object graphs optionallity descriptors.
+    ///Deserializes the dictionary into an instance of the object.  Returns nil if the dictionary representation does not match the target object graph, or the object graphs optionality descriptors.
     static func initialize(dictionary: [String: Any]) -> Self?
 }
 

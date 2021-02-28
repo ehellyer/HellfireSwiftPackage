@@ -24,11 +24,13 @@ public class MultipartRequest: NetworkRequest {
     
     public var multipartFormData: MultipartFormData
     
-    public func build() throws -> (request: URLRequest, requestBodyURL: URL) {
+    public func build() throws -> (urlRequest: URLRequest, requestBody: URL) {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = self.method.name
-        urlRequest.setValue(self.multipartFormData.contentType.value, forHTTPHeaderField: self.multipartFormData.contentType.name)
-        urlRequest.setValue("\(self.multipartFormData.contentLength)", forHTTPHeaderField: "Content-Length")
+        urlRequest.setValue(self.multipartFormData.contentType.value,
+                            forHTTPHeaderField: self.multipartFormData.contentType.name)
+        urlRequest.setValue(self.multipartFormData.contentLength.value,
+                            forHTTPHeaderField: self.multipartFormData.contentLength.name)
         
         let tempDirectoryURL = fileManager.temporaryDirectory
         let directoryURL = tempDirectoryURL.appendingPathComponent("hellfire/multipart.form.data")
@@ -44,7 +46,7 @@ public class MultipartRequest: NetworkRequest {
             throw error
         }
         
-        return (request: urlRequest, requestBodyURL: _requestBodyURL)
+        return (urlRequest: urlRequest, requestBody: _requestBodyURL)
     }
     
     public func cleanUpHttpBody() {

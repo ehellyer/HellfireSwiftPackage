@@ -38,8 +38,25 @@ public enum HellfireError: Error {
         case inputStreamReadFailed(error: Error)
     }
     
+    /// The URLSessionTask was unable to be created.  Specific reasons, if known, will be in the ServiceError response.
+    public enum ServiceRequestError: Error {
+        case unableToCreateTask(result: RequestResult)
+    }
+    
     /// Multipart form encoding failed.
     case multipartEncodingFailed(reason: MultipartEncodingFailureReason)
     
-    public static let userCancelled = NSURLErrorCancelled
+    /// An asynchronous load has been canceled.
+    public static let userCancelled = URLError.cancelled.rawValue
+    
+    /// An asynchronous operation timed out.
+    ///
+    /// A URL session sends this error to its delegate when the timeoutInterval of a request expires before a load can complete.
+    public static let timedOut = URLError.timedOut.rawValue
+
+    /// An attempt to establish a secure connection failed for reasons that can’t be expressed more specifically.
+    public static let secureConnectionFailed = URLError.secureConnectionFailed.rawValue
+    
+    /// The host name for a URL couldn’t be resolved.
+    public static let cannotFindHost = URLError.cannotFindHost.rawValue
 }

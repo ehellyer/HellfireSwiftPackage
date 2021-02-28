@@ -19,6 +19,6 @@ public struct HTTPHeader: JSONSerializable {
     ///Gets the name of the HTTPHeader
     public let name: String
     
-    ///Gets the values of the HTTPHeder
+    ///Gets the values of the HTTPHeader
     public let value: String
 }

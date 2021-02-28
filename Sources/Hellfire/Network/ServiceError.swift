@@ -10,16 +10,15 @@ import Foundation
 
 public class ServiceError: Error {
     
-    
     /// Default initializer for the `ServiceError` object.
     /// - Parameters:
-    ///   - request: Sets the url for the service error.
-    ///   - error: Sets the error object if there is one available.
-    ///   - statusCode: Sets `StatusCode` of the network request.
-    ///   - responseBody: Sets response body for the erroring request.
-    ///   - userCancelledRequest: Sets the flag to indicate if the network request was cancelled by the user.  Returns true if the user cancelled the request.
-    internal init(request: URLRequest?, error: Error?, statusCode: StatusCode, responseBody: Data?, userCancelledRequest: Bool) {
-        self.request = request
+    ///   - requestURL: Gets the url for the service error.
+    ///   - error: Gets the error object if there is one available.
+    ///   - statusCode: Gets `StatusCode` of the network request.
+    ///   - responseBody: Gets response body for the erroring request.
+    ///   - userCancelledRequest: Gets the flag to indicate if the network request was cancelled by the user.  Returns true if the user cancelled the request.
+    internal init(requestURL: URL?, error: Error?, statusCode: StatusCode, responseBody: Data?, userCancelledRequest: Bool) {
+        self.requestURL = requestURL
         self.error = error
         self.statusCode = statusCode
         self.responseBody = responseBody
@@ -27,7 +26,7 @@ public class ServiceError: Error {
     }
     
     ///Gets the url request that initiated the service error.
-    public let request: URLRequest?
+    public let requestURL: URL?
     
     ///Gets the error object if there is one available.
     public let error: Error?
