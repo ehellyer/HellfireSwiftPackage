@@ -31,7 +31,7 @@ public class ServiceError: Error {
     ///Gets the error object if there is one available.
     public let error: Error?
     
-    ///Gets `StatusCode` off the network request.
+    ///Gets `StatusCode` of the network request.
     public let statusCode: StatusCode
     
     ///Gets response body for the erroring request.  (Sometimes this might contain a HTML error page from a web service.)

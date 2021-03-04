@@ -43,7 +43,7 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     case conflict = 409
     case gone = 410
     case lengthRequired = 411
-    case preconditionRequried = 412
+    case preconditionRequired = 412
     case upgradeRequired = 426
     case tooManyRequests = 429
     
