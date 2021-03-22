@@ -3,16 +3,41 @@ import XCTest
 
 final class HellfireTests: XCTestCase {
     
-    
     static var allTests = [
         ("testSuite", testSuite),
     ]
     
     func testSuite() {
+        self.stressTestDiskCache()
         self.testPerson()
         //self.testBirthdayDate()
     }
 
+
+    func stressTestDiskCache() {
+        let config = DiskCacheConfiguration(settings: [CachePolicyType.hour: 1000,
+                                                       .fourHours: 1000,
+                                                       .day: 1000,
+                                                       .week: 1000,
+                                                       .month: 1000,
+                                                       .untilSpaceNeeded: 1000])
+        
+        
+        let dc = DiskCache(config: config)
+        dc.clearCache()
+        
+        for i in 10000000...10006000 {
+            autoreleasepool {
+                let data = "\(i)".data(using: .utf8)!
+                let request1 = NetworkRequest(url: URL(string: "https://www.apple.com/\(i)")!, method: .get, cachePolicyType: .hour, body: data)
+                let request2 = NetworkRequest(url: URL(string: "https://www.apple.com/\(i)")!, method: .get, cachePolicyType: .day, body: data)
+                let request3 = NetworkRequest(url: URL(string: "https://www.apple.com/\(i)")!, method: .get, cachePolicyType: .week, body: data)
+                let _ = dc.cache(data: data, forRequest: request1)
+                let _ = dc.cache(data: data, forRequest: request2)
+                let _ = dc.cache(data: data, forRequest: request3)
+            }
+        }
+    }
     
     //Mark: - Testing JSONSerializable
     

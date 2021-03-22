@@ -40,7 +40,7 @@ public class ServiceInterface: NSObject {
     
     private var reachabilityManager: NetworkReachabilityManager?
     private var privateReachabilityHost: String?
-    private lazy var diskCache = DiskCache()
+    private lazy var diskCache = DiskCache(config: DiskCacheConfiguration())
     private var backgroundSessionIdentifier: String
     
     private lazy var dataTaskSession: URLSession = {
