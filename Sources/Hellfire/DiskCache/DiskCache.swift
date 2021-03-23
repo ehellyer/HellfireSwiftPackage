@@ -32,26 +32,26 @@ internal class DiskCache {
     
     private let fileExtension = "dkc"
     private lazy var hasher = MD5Hash()
-    private lazy var cachePolicies = CachePolicy()
+    private lazy var cachePolicies = CachePolicies()
     private var diskCacheEnabled = true
     private var activePolicyTrimming = Set<CachePolicyType>()
     private var cacheTrimConcurrentQueue = DispatchQueue(label: "DiskCache_CacheTrimQueue", qos: DispatchQoS.userInitiated, attributes: .concurrent)
     private var serialAccessQueue = DispatchQueue(label: "DiskCache_ActivePolicyQueue")
     
-    private func getBytesUsed(forPolicy policy: CachePolicySetting) -> UInt64 {
+    private func getBytesUsed(forPolicy policy: CachePolicy) -> UInt64 {
         self.serialAccessQueue.sync {
             return policy.bytesUsed
         }
     }
     
-    private func incrementBytesUsed(forPolicy policy: CachePolicySetting, bytes: UInt64) -> UInt64 {
+    private func incrementBytesUsed(forPolicy policy: CachePolicy, bytes: UInt64) -> UInt64 {
         self.serialAccessQueue.sync {
             policy.bytesUsed += bytes
             return policy.bytesUsed
         }
     }
     
-    private func decrementBytesUsed(forPolicy policy: CachePolicySetting, bytes: UInt64) -> UInt64 {
+    private func decrementBytesUsed(forPolicy policy: CachePolicy, bytes: UInt64) -> UInt64 {
         self.serialAccessQueue.sync {
             let result = policy.bytesUsed - bytes
             policy.bytesUsed = max(0, result)
@@ -79,30 +79,30 @@ internal class DiskCache {
 
     private func initializeCacheSettings(config: DiskCacheConfiguration) -> Bool {
         var success = true
-        for policySetting in self.cachePolicies.allPolicies() {
-            policySetting.maxByteSize = config.policyMaxByteSize[policySetting.policyType] ?? 0
-            success = self.createFolderForSetting(policySetting: policySetting)
+        for policy in self.cachePolicies.allPolicies() {
+            policy.maxByteSize = config.policyMaxByteSize[policy.policyType] ?? 0
+            success = self.createFolderForSetting(policy: policy)
             if (success == false) { break }
         }
         return success
     }
     
-    private func createFolderForSetting(policySetting: CachePolicySetting) -> Bool {
-        guard policySetting.policyType != .doNotCache else {
+    private func createFolderForSetting(policy: CachePolicy) -> Bool {
+        guard policy.policyType != .doNotCache else {
             return true
         }
         var pathCreated = true
-        if (FileManager.pathExists(path: policySetting.cacheFolder) == false) {
-            pathCreated = FileManager.createWithIntermediateDirectories(path: policySetting.cacheFolder)
+        if (FileManager.pathExists(path: policy.cacheFolder) == false) {
+            pathCreated = FileManager.createWithIntermediateDirectories(path: policy.cacheFolder)
         }
         return pathCreated
     }
     
     private func updateCurrentByteSizeForAllPolicies() {
         if (self.diskCacheEnabled) {
-            for policySetting in self.cachePolicies.allPolicies() {
+            for policy in self.cachePolicies.allPolicies() {
                 var fileDiskBytesUsed: UInt64 = 0
-                if let directoryContents = FileManager.contentsOfDirectory(path: policySetting.cacheFolder,
+                if let directoryContents = FileManager.contentsOfDirectory(path: policy.cacheFolder,
                                                                            withFileExtension: self.fileExtension)  {
                     for fileUrl in directoryContents {
                         if let fileAttributes = try? fileUrl.resourceValues(forKeys: [.fileSizeKey]) {
@@ -112,18 +112,18 @@ internal class DiskCache {
                     }
                 }
                 self.serialAccessQueue.sync {
-                    policySetting.bytesUsed = fileDiskBytesUsed
+                    policy.bytesUsed = fileDiskBytesUsed
                 }
             }
         }
     }
     
-    private func doesCachedItem(atPath filePath: URL, violateTTLFor policySetting: CachePolicySetting) -> Bool {
+    private func doesCachedItem(atPath filePath: URL, violateTTLFor policy: CachePolicy) -> Bool {
         var doesViolateTTL = false
         if let attributes = try? FileManager.default.attributesOfItem(atPath: filePath.path) {
             let fileCreatedDate = attributes[FileAttributeKey.creationDate] as! Date
             let timeInterval = fileCreatedDate.timeIntervalSinceNow
-            if (fabs(timeInterval) > TimeInterval(policySetting.ttlInSeconds)) {
+            if (fabs(timeInterval) > TimeInterval(policy.ttlInSeconds)) {
                 doesViolateTTL = true
                 try? FileManager.default.removeItem(at: filePath)
             }
@@ -131,17 +131,17 @@ internal class DiskCache {
         return doesViolateTTL
     }
     
-    private func flushCacheFor(policySetting: CachePolicySetting) -> Bool {
+    private func flushCacheFor(policy: CachePolicy) -> Bool {
         var success = false
-        try? FileManager.default.removeItem(at: policySetting.cacheFolder)
-        success = self.createFolderForSetting(policySetting: policySetting)
+        try? FileManager.default.removeItem(at: policy.cacheFolder)
+        success = self.createFolderForSetting(policy: policy)
         return success
     }
     
     private func flushCache() -> Bool {
         var success = true
-        for policySetting in self.cachePolicies.allPolicies() {
-            success = self.flushCacheFor(policySetting: policySetting)
+        for policy in self.cachePolicies.allPolicies() {
+            success = self.flushCacheFor(policy: policy)
             if (!success) { break }
         }
         return success
@@ -159,7 +159,7 @@ internal class DiskCache {
         return requestKey
     }
     
-    private func trimCache(forPolicy policy: CachePolicySetting) {
+    private func trimCache(forPolicy policy: CachePolicy) {
         self.cacheTrimConcurrentQueue.async { [weak self] in
             guard let strongSelf = self else { return }
 
@@ -202,13 +202,13 @@ internal class DiskCache {
     internal func getCacheDataFor(request: NetworkRequest) -> Data? {
         guard self.diskCacheEnabled, request.cachePolicyType != CachePolicyType.doNotCache else { return nil }
         
-        let policySetting = self.cachePolicies.policy(forType: request.cachePolicyType)
+        let policy = self.cachePolicies.policy(forType: request.cachePolicyType)
         let requestKey = self.key(forRequest: request)
         
         if (requestKey.isEmpty == false) {
             let fileName = requestKey + "." + self.fileExtension
-            let cachePath = policySetting.cacheFolder.appendingPathComponent(fileName)
-            if (FileManager.pathExists(path: cachePath) && self.doesCachedItem(atPath: cachePath, violateTTLFor: policySetting) == false) {
+            let cachePath = policy.cacheFolder.appendingPathComponent(fileName)
+            if (FileManager.pathExists(path: cachePath) && self.doesCachedItem(atPath: cachePath, violateTTLFor: policy) == false) {
                 let data = try? Data.init(contentsOf: cachePath)
                 return data
             }
@@ -244,13 +244,13 @@ internal class DiskCache {
         //Update bytes used.
         let fileSize = UInt64(data.count)
         _ = self.incrementBytesUsed(forPolicy: policy, bytes: fileSize)
-        //print("Cached \(fileSize) bytes  Total used \(self.bytesUsed) bytes for type \(policySetting.policyType.folderName)")
+        //print("Cached \(fileSize) bytes  Total used \(self.bytesUsed) bytes for type \(policy.policyType.folderName)")
     }
     
     ///Clear the cache for a specific cache policy.
     internal func clearCache(policyType: CachePolicyType) {
-        let policySetting = self.cachePolicies.policy(forType: policyType)
-        let _ = self.flushCacheFor(policySetting: policySetting)
+        let policy = self.cachePolicies.policy(forType: policyType)
+        let _ = self.flushCacheFor(policy: policy)
         self.updateCurrentByteSizeForAllPolicies()
     }
     
@@ -311,21 +311,9 @@ public enum CachePolicyType: CaseIterable {
         case .doNotCache: return "DoNotCache"
         }
     }
-    
-    internal var maxByteSize: UInt64 {
-        switch self {
-        case .hour: return 50331648
-        case .fourHours: return 104857600
-        case .day: return 262144000
-        case .week: return 524288000
-        case .month: return 1073741824
-        case .untilSpaceNeeded: return 1073741824
-        case .doNotCache: return 0
-        }
-    }
 }
 
-internal class CachePolicySetting {
+internal class CachePolicy {
     
     init(policyType: CachePolicyType) {
         let appName = ProcessInfo.processInfo.processName
@@ -335,7 +323,7 @@ internal class CachePolicySetting {
         self.cacheRootPath = cachePath
         self.policyType = policyType
         self.bytesUsed = 0
-        self.maxByteSize = self.policyType.maxByteSize
+        self.maxByteSize = 0 //Configured later
         self.cacheFolder = cachePath.appendingPathComponent(self.policyType.folderName)
         self.ttlInSeconds = self.policyType.ttlInSeconds
         self.cachePolicy = self.policyType
@@ -350,8 +338,8 @@ internal class CachePolicySetting {
     let cachePolicy: CachePolicyType
 }
 
-extension CachePolicySetting: Hashable {
-    static func == (lhs: CachePolicySetting, rhs: CachePolicySetting) -> Bool {
+extension CachePolicy: Hashable {
+    static func == (lhs: CachePolicy, rhs: CachePolicy) -> Bool {
         return lhs.policyType == rhs.policyType
     }
     
@@ -360,19 +348,19 @@ extension CachePolicySetting: Hashable {
     }
 }
 
-internal class CachePolicy {
+internal class CachePolicies {
     
-    private lazy var policies: [CachePolicySetting] = {
-        return CachePolicyType.allCases.map { CachePolicySetting.init(policyType: $0) }
+    private lazy var policies: [CachePolicy] = {
+        return CachePolicyType.allCases.map { CachePolicy.init(policyType: $0) }
     }()
     
-    func policy(forType policyType: CachePolicyType) -> CachePolicySetting {
+    func policy(forType policyType: CachePolicyType) -> CachePolicy {
         let setting = self.policies.first(where: { $0.policyType == policyType })
-        //Force unwrap because we can guarantee the policy type is in the policies array.
+        //Force unwrap because we can guarantee the policy type is in the policies array due to the lazy binding.
         return setting!
     }
     
-    func allPolicies() -> [CachePolicySetting] {
+    func allPolicies() -> [CachePolicy] {
         return self.policies
     }
 }
