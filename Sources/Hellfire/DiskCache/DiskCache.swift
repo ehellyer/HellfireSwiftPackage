@@ -17,13 +17,16 @@ internal class DiskCache {
     }
     
     internal init(config: DiskCacheConfiguration) {
+        let appName = ProcessInfo.processInfo.processName
+        var cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!.absoluteURL
+        cachePath.appendPathComponent("HellfireDiskCache")
+        cachePath.appendPathComponent(appName)
+        self.cacheRootPath = cachePath
         self.diskCacheEnabled = self.initializeCacheSettings(config: config)
         self.updateCurrentByteSizeForAllPolicies()
         
         #if DEBUG
-        if let policy = self.cachePolicies.allPolicies().first {
-            print("DiskCache root path: \(policy.cacheRootPath.path)")
-        }
+        print("DiskCache root path: \(self.cacheRootPath.path)")
         #endif
     }
     
@@ -31,7 +34,8 @@ internal class DiskCache {
     
     private let fileExtension = "dkc"
     private lazy var hasher = MD5Hash()
-    private lazy var cachePolicies = CachePolicies()
+    private var cacheRootPath: URL
+    private lazy var cachePolicies = CachePolicies(cacheRootPath: self.cacheRootPath)
     private var diskCacheEnabled = true
     private var activePolicyTrimming = Set<CachePolicyType>()
     private var cacheTrimConcurrentQueue = DispatchQueue(label: "DiskCache_ConcurrentTrimCacheQueue", qos: DispatchQoS.userInitiated, attributes: .concurrent)
@@ -55,6 +59,12 @@ internal class DiskCache {
             let result = policy.bytesUsed - bytes
             policy.bytesUsed = max(0, result)
             return policy.bytesUsed
+        }
+    }
+    
+    private func setBytesUsed(_ bytes: UInt64, forPolicy policy: CachePolicy) {
+        self.serialAccessQueue.sync {
+            policy.bytesUsed = bytes
         }
     }
     
@@ -110,9 +120,7 @@ internal class DiskCache {
                     }
                 }
             }
-            self.serialAccessQueue.sync {
-                policy.bytesUsed = fileDiskBytesUsed
-            }
+            self.setBytesUsed(fileDiskBytesUsed, forPolicy: policy)
         }
     }
     
@@ -310,27 +318,19 @@ public enum CachePolicyType: CaseIterable {
 
 internal class CachePolicy {
     
-    init(policyType: CachePolicyType) {
-        let appName = ProcessInfo.processInfo.processName
-        var cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!.absoluteURL
-        cachePath.appendPathComponent("HellfireDiskCache")
-        cachePath.appendPathComponent(appName)
-        self.cacheRootPath = cachePath
+    init(policyType: CachePolicyType, cacheRootPath: URL) {
         self.policyType = policyType
         self.bytesUsed = 0
         self.maxByteSize = 0 //Configured later
-        self.cacheFolder = cachePath.appendingPathComponent(self.policyType.folderName)
+        self.cacheFolder = cacheRootPath.appendingPathComponent(self.policyType.folderName)
         self.ttlInSeconds = self.policyType.ttlInSeconds
-        self.cachePolicy = self.policyType
     }
     
-    let cacheRootPath: URL
     let policyType: CachePolicyType
     var bytesUsed: UInt64
     var maxByteSize: UInt64
     let cacheFolder: URL
     let ttlInSeconds: UInt32
-    let cachePolicy: CachePolicyType
 }
 
 extension CachePolicy: Hashable {
@@ -345,17 +345,20 @@ extension CachePolicy: Hashable {
 
 internal class CachePolicies {
     
-    private lazy var policies: [CachePolicy] = {
-        return CachePolicyType.allCases.map { CachePolicy.init(policyType: $0) }
-    }()
+    init(cacheRootPath: URL) {
+        self.policies = CachePolicyType.allCases.reduce(into: [CachePolicyType: CachePolicy]()) {
+            $0[$1] = CachePolicy.init(policyType: $1, cacheRootPath: cacheRootPath)
+        }
+    }
+    
+    private var policies: [CachePolicyType: CachePolicy]
     
     func policy(forType policyType: CachePolicyType) -> CachePolicy {
-        let setting = self.policies.first(where: { $0.policyType == policyType })
-        //Force unwrap because we can guarantee the policy type is in the policies array.
+        let setting = self.policies[policyType]
         return setting!
     }
     
     func allPolicies() -> [CachePolicy] {
-        return self.policies
+        return Array(self.policies.values)
     }
 }
