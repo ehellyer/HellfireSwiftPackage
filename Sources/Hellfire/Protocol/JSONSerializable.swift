@@ -115,7 +115,7 @@ public extension JSONSerializable {
     }
     
     static func initialize(jsonData: Data?) -> Self? {
-        guard let modelData = jsonData else { return nil }
+        guard let modelData = jsonData, modelData.count > 0 else { return nil }
         
         let decoder = Self.decoder
         var decodedObject: Self? = nil
