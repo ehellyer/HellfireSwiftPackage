@@ -161,7 +161,7 @@ public class ServiceInterface: NSObject {
     private func taskResponseHandler(request: NetworkRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping TaskResult) {
         let statusCode = self.statusCodeForResponse(response, error: error)
         
-        if let responseData = data, HTTPCode.isOk(statusCode: statusCode) {
+        if let responseData = data, HTTPCode.isOk(statusCode) {
             self.diskCache.cache(data: responseData, forRequest: request)
         }
         
@@ -171,7 +171,7 @@ public class ServiceInterface: NSObject {
 
         //Call completion block
         DispatchQueue.main.async {
-            if HTTPCode.isOk(statusCode: statusCode) {
+            if HTTPCode.isOk(statusCode) {
                 let dataResponse = NetworkResponse(headers: responseHeaders, body: data, statusCode: statusCode)
                 completion(.success(dataResponse))
             } else {
@@ -346,7 +346,7 @@ extension ServiceInterface: URLSessionDataDelegate {
         let responseHeaders: [HTTPHeader] = self.responseHeaders(task.response)
         var result: RequestResult
         
-        if HTTPCode.isOk(statusCode: statusCode) {
+        if HTTPCode.isOk(statusCode) {
             let dataResponse = NetworkResponse(headers: responseHeaders,
                                                body: nil,
                                                statusCode: statusCode)

@@ -11,6 +11,7 @@ import CoreFoundation
 
 public typealias StatusCode = Int
 
+/// Common HTTP codes
 public enum HTTPCode: StatusCode, JSONSerializable {
     //2xx Success codes
     case ok = 200
@@ -44,6 +45,15 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     case gone = 410
     case lengthRequired = 411
     case preconditionRequired = 412
+    
+    /// I'm a teapot client error response code indicates that the server refuses to brew coffee because it is, permanently, a teapot.
+    ///
+    /// The sprit of this code can be used to indicate the server does not support this kind of request.
+    ///
+    /// __See Also__
+    ///
+    /// [I'm a teapot](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/418)
+    case imaTeapot = 418
     case upgradeRequired = 426
     case tooManyRequests = 429
     
@@ -59,7 +69,7 @@ public enum HTTPCode: StatusCode, JSONSerializable {
 extension HTTPCode {
 
     ///Returns true if status code is in the range of 200...299.
-    public static func isOk(statusCode: StatusCode) -> Bool {
+    public static func isOk(_ statusCode: StatusCode) -> Bool {
         return (200...299 ~= statusCode)
     }
     
