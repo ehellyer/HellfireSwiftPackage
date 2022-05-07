@@ -22,38 +22,51 @@
 //  JS source: http://pajhome.org.uk/crypt/md5/md5.html
 //  Created by Ed Hellyer on 2/1/20.
 //
+//  MD5 hash, developed by Ronald Rivest
+//  Released April 1992 - Replaced MD4, 128 bit hash value
+//  Collisions discovered in 1996
+//  CA Certificate forged in December 2008 using MD5 collision.
 
 import Foundation
 
 internal class MD5Hash {
     
     //MARK: - Public API
+    
+    /// Performs an MD5 hash on the Swift unicode input string and returns the resulting hash as a Swift unicode string.
+    /// - Parameter input: The Swift unicode input string to be hashed using the MD5 algorithm.
+    /// - Returns: An MD5 hash of the input string as a Swift unicode string.
     func MD5(_ input: String) -> String {
-        return hex_md5(input)
+        let utf8Array = self.utf8CharArray(input)
+        let str = self.rstr_md5(utf8Array)
+        return self.rstr2hex(str)
     }
     
     //MARK: - Private API
-    private func hex_md5(_ input: String) -> String {
-        return rstr2hex(rstr_md5(str2rstr_utf8(input)))
-    }
     
-    private func str2rstr_utf8(_ input: String) -> [CUnsignedChar] {
+    /// Converts a Swift string into an array of C 'unsigned char' type 8 bit integers.
+    /// - Parameter input: The input string to be converted.
+    /// - Returns: A character byte array of unsigned 8-bit integers
+    private func utf8CharArray(_ input: String) -> [CUnsignedChar] {
         return Array(input.utf8)
     }
     
+    /// Converts an array of C 'unsigned char' type 8 bit integers into unicode scalar Swift string.
+    /// - Parameter input: An array of C 'unsigned char' type 8 bit integers.
+    /// - Returns: A unicode scalar Swift string.
     private func rstr2tr(_ input: [CUnsignedChar]) -> String {
         var output: String = ""
         
         input.forEach {
-            output.append(String(UnicodeScalar($0)))
+            output.append(String(Unicode.Scalar($0)))
         }
         
         return output
     }
     
-    /*
-     * Convert a raw string to a hex string
-     */
+    /// Convert a character byte array of unsigned 8-bit integers into Swift string.
+    /// - Parameter input: Convert a character byte array of unsigned 8-bit integers.
+    /// - Returns: A hexadecimal value of each input character is concatenated into a swift return string.
     private func rstr2hex(_ input: [CUnsignedChar]) -> String {
         let hexTab: [Character] = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"]
         var output: [Character] = []
@@ -70,25 +83,21 @@ internal class MD5Hash {
         return String(output)
     }
     
-    /*
-     * Convert a raw string to an array of little-endian words
-     * Characters >255 have their high-byte silently ignored.
-     */
+    // Convert a raw string to an array of little-endian words
+    // Characters >255 have their high-byte silently ignored.
     private func rstr2binl(_ input: [CUnsignedChar]) -> [Int32] {
         var output: [Int: Int32] = [:]
         
         for i in stride(from: 0, to: input.count * 8, by: 8) {
             let value: Int32 = (Int32(input[i/8]) & 0xFF) << (Int32(i) % 32)
             
-            output[i >> 5] = unwrap(output[i >> 5]) | value
+            output[i >> 5] = (output[i >> 5] ?? 0) | value
         }
         
         return dictionary2array(output)
     }
     
-    /*
-     * Convert an array of little-endian words to a string
-     */
+    // Convert an array of little-endian words to a string
     private func binl2rstr(_ input: [Int32]) -> [CUnsignedChar] {
         var output: [CUnsignedChar] = []
         
@@ -101,32 +110,34 @@ internal class MD5Hash {
         return output
     }
     
-    /*
-     * Calculate the MD5 of a raw string
-     */
+    /// Returns a character byte array of unsigned 8-bit integers that represents the hash of the input array.
+    /// - Parameter input: A character byte array of unsigned 8-bit integers to be hashed
+    /// - Returns: A character byte array of unsigned 8-bit integers
     private func rstr_md5(_ input: [CUnsignedChar]) -> [CUnsignedChar] {
         return binl2rstr(binl_md5(rstr2binl(input), input.count * 8))
     }
     
-    /*
-     * Add integers, wrapping at 2^32.
-     */
+    
+    /// Returns the sum of the two given values, wrapping the result in case of any overflow, as a signed Int32.
+    ///
+    /// The safe addition function discards any bits that overflow the 32 bit integer type.
+    ///
+    /// - Parameters:
+    ///   - x: Int32 input
+    ///   - y: Int32 input
+    /// - Returns: Returns Int32 result.
     private func safe_add(_ x: Int32, _ y: Int32) -> Int32 {
         return x &+ y
     }
     
-    /*
-     * Bitwise rotate a 32-bit number to the left.
-     */
+    // Bitwise rotate a 32-bit number to the left.
     private func bit_rol(_ num: Int32, _ cnt: Int32) -> Int32 {
         // num >>>
         return (num << cnt) | zeroFillRightShift(num, (32 - cnt))
     }
     
     
-    /*
-     * These funcs implement the four basic operations the algorithm uses.
-     */
+    // These funcs implement the four basic operations the algorithm uses.
     private func md5_cmn(_ q: Int32, _ a: Int32, _ b: Int32, _ x: Int32, _ s: Int32, _ t: Int32) -> Int32 {
         return safe_add(bit_rol(safe_add(safe_add(a, q), safe_add(x, t)), s), b)
     }
@@ -148,9 +159,7 @@ internal class MD5Hash {
     }
     
     
-    /*
-     * Calculate the MD5 of an array of little-endian words, and a bit length.
-     */
+    // Calculate the MD5 of an array of little-endian words, and a bit length.
     private func binl_md5(_ input: [Int32], _ len: Int) -> [Int32] {
         /* append padding */
         
@@ -255,6 +264,7 @@ internal class MD5Hash {
     }
     
     //MARK: - Private API Helper funcs
+    
     private func length(_ dictionary: [Int: Int32]) -> Int {
         return (dictionary.keys.max() ?? 0) + 1
     }

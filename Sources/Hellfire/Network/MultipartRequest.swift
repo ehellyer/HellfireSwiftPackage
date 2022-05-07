@@ -19,7 +19,7 @@ public class MultipartRequest: NetworkRequest {
         self.fileManager = multipartFormData.fileManager
         super.init(url: url,
                    method: method,
-                   contentType: multipartFormData.contentType.value)
+                   headers: [HTTPHeader.contentType(multipartFormData.contentType.value)])
     }
     
     public var multipartFormData: MultipartFormData

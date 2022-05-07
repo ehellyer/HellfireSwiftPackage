@@ -1,16 +1,16 @@
 //
-//  NetworkResponse.swift
+//  DataResponse.swift
 //  Hellfire
 //
-//  Created by Ed Hellyer on 6/21/20.
+//  Created by Ed Hellyer on 10/3/21.
 //
 
 import Foundation
 
-///Describes the successful response of an HTTP \ HTTPS call to a server
-public class NetworkResponse {
+/// Represents the result of a data task downloaded into memory.
+public class DataResponse {
     
-    /// Creates an instance of `NetworkResponse`
+    /// Creates an instance of `DataResponse`
     /// - Parameters:
     ///   - headers: Sets the response headers from the server.
     ///   - body: Sets the response body from the server.
@@ -21,12 +21,12 @@ public class NetworkResponse {
         self.statusCode = statusCode
     }
     
-    ///Gets the response headers from the server.
+    /// Gets the response headers from the server.
     public let headers: [HTTPHeader]
-
-    ///Gets the response body from the server.
+    
+    /// Gets the response body from the server.
     public let body: Data?
     
-    ///Gets the HTTP result status code.
+    /// Gets the HTTP result status code.
     public let statusCode: StatusCode
 }

@@ -7,10 +7,24 @@ final class HellfireTests: XCTestCase {
         ("testSuite", testSuite),
     ]
     
+    
     func testSuite() {
-        self.stressTestDiskCache()
-        self.testPerson()
+        self.hashTest()
+        //self.stressTestDiskCache()
+        //self.testPerson()
         //self.testBirthdayDate()
+    }
+
+    func hashTest() {
+        let md5 = MD5Hash()
+        
+        for _ in 1 ... 1000 {
+            let hash = md5.MD5(String.randomString(length: 10))
+            
+            let control = md5.MD5("This is my control string")
+            print (hash, control)
+            
+        }
     }
 
 
@@ -50,7 +64,7 @@ final class HellfireTests: XCTestCase {
         }
         """
         let jsonData = Data(jsonStr.utf8)
-        let person = Person.initialize(jsonData: jsonData)
+        let person = try? Person.initialize(jsonData: jsonData)
         XCTAssert(person?.firstName == "Edward", "Failed to map external property to internal property on Person.")
         XCTAssert(person?.lastName == "Hellyer", "Failed to map external property to internal property on Person.")
         XCTAssert(person?.isAwesome == true, "Failed to instantiate Person from JSON data.")

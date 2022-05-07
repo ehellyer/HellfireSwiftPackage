@@ -55,7 +55,6 @@ public class MultipartFormData {
         return headers
     }
     
-    
     //MARK: - Private - Body Part Encoding
     
     private func encode(_ formPart: FormPart) throws -> Data {
@@ -106,7 +105,6 @@ public class MultipartFormData {
         
         return encoded
     }
-    
     
     //MARK: - Private - Mime Type
     
@@ -241,34 +239,6 @@ public class MultipartFormData {
         return HTTPHeader.contentLength(_contentLength)
     }
     
-    /// Encode the MultipartFormData form parts as an InputStream.
-    /// - Throws: An `HellfireError` if encoding encounters an error.
-    /// - Returns: Multipart/form-data request body as an InputStream.
-    public func streamEncode() throws -> InputStream {
-        self.formParts.first?.isInitialBoundary = true
-        self.formParts.last?.isFinalBoundary = true
-        
-        var streams: [InputStream] = []
-        
-        for formPart in self.formParts {
-            var boundaryData = formPart.isInitialBoundary ? self.initialBoundary : self.encapsulatedBoundary
-            let headerData = self.encodeHeaders(for: formPart)
-            boundaryData.append(headerData)
-            let boundaryStream = InputStream(data: boundaryData)
-            streams.append(boundaryStream)
-            
-            let bodyStream = formPart.inputStream
-            streams.append(bodyStream)
-            
-            if formPart.isFinalBoundary {
-                let finalBoundaryStream = InputStream(data: self.finalBoundary)
-                streams.append(finalBoundaryStream)
-            }
-        }
-        
-        return InputStreamsSerializer(inputStreams: streams)
-    }
-    
     /// Encodes all appended form parts into a single `Data` value.
     ///
     /// - Note: This method will load all the appended form parts into memory all at the same time. This method should
@@ -307,13 +277,13 @@ public class MultipartFormData {
         }
         
         if fileManager.fileExists(atPath: fileURL.path) {
-            throw HellfireError.multipartEncodingFailed(reason: .outputStreamFileAlreadyExists(at: fileURL))
+            throw HellfireError.multipartEncodingFailed(reason: .outputStreamFileAlreadyExists(url: fileURL))
         } else if !fileURL.isFileURL {
             throw HellfireError.multipartEncodingFailed(reason: .outputStreamURLInvalid(url: fileURL))
         }
         
         guard let outputStream = OutputStream(url: fileURL, append: false) else {
-            throw HellfireError.multipartEncodingFailed(reason: .outputStreamCreationFailed(for: fileURL))
+            throw HellfireError.multipartEncodingFailed(reason: .outputStreamCreationFailed(url: fileURL))
         }
         
         outputStream.open()
@@ -326,7 +296,6 @@ public class MultipartFormData {
             try self.write(formPart, to: outputStream)
         }
     }
-    
     
     //MARK: - Append the form parts into the request.
     
@@ -354,7 +323,7 @@ public class MultipartFormData {
             let mime = self.mimeType(forPathExtension: pathExtension)
             self.append(fileURL, withName: name, fileName: fileName, mimeType: mime)
         } else {
-            self.setFormPartError(withReason: .bodyPartFilenameInvalid(in: fileURL))
+            self.setFormPartError(withReason: .formPartFilenameInvalid(url: fileURL))
         }
     }
     
@@ -377,7 +346,7 @@ public class MultipartFormData {
         
         // Check 1 - is file URL?
         guard fileURL.isFileURL else {
-            self.setFormPartError(withReason: .bodyPartURLInvalid(url: fileURL))
+            self.setFormPartError(withReason: .formPartURLInvalid(url: fileURL))
             return
         }
         
@@ -385,11 +354,11 @@ public class MultipartFormData {
         do {
             let isReachable = try fileURL.checkPromisedItemIsReachable()
             guard isReachable else {
-                self.setFormPartError(withReason: .bodyPartFileNotReachable(at: fileURL))
+                self.setFormPartError(withReason: .formPartFileNotReachable(url: fileURL))
                 return
             }
         } catch {
-            self.setFormPartError(withReason: .bodyPartFileNotReachableWithError(atURL: fileURL, error: error))
+            self.setFormPartError(withReason: .formPartFileNotReachableWithError(url: fileURL, error: error))
             return
         }
         
@@ -398,7 +367,7 @@ public class MultipartFormData {
         let path = fileURL.path
         
         guard fileManager.fileExists(atPath: path, isDirectory: &isDirectory) && !isDirectory.boolValue else {
-            self.setFormPartError(withReason: .bodyPartFileIsDirectory(at: fileURL))
+            self.setFormPartError(withReason: .formPartFileIsDirectory(url: fileURL))
             return
         }
         
@@ -407,18 +376,18 @@ public class MultipartFormData {
         
         do {
             guard let fileSize = try fileManager.attributesOfItem(atPath: path)[.size] as? NSNumber else {
-                self.setFormPartError(withReason: .bodyPartFileSizeNotAvailable(at: fileURL))
+                self.setFormPartError(withReason: .formPartFileSizeNotAvailable(url: fileURL))
                 return
             }
             contentLength = fileSize.uint64Value
         } catch {
-            self.setFormPartError(withReason: .bodyPartFileSizeQueryFailedWithError(forURL: fileURL, error: error))
+            self.setFormPartError(withReason: .formPartFileSizeQueryFailedWithError(url: fileURL, error: error))
             return
         }
         
         // Check 5 - can a stream be created from file URL?
         guard let stream = InputStream(url: fileURL) else {
-            self.setFormPartError(withReason: .bodyPartInputStreamCreationFailed(for: fileURL))
+            self.setFormPartError(withReason: .formPartInputStreamCreationFailed(url: fileURL))
             return
         }
         
