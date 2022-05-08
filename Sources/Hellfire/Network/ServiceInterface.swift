@@ -492,7 +492,6 @@ extension ServiceInterface: URLSessionDelegate {
 extension ServiceInterface {
     /// When build settings has DEBUG configured, this default implementation of global error handler, prints out the service error.
     func defaultServiceErrorHandler(_ serviceError: ServiceError) -> Void {
-#if DEBUG
         var errorMessage: NSString
         
         switch serviceError.error {
@@ -516,25 +515,22 @@ extension ServiceInterface {
 
         
         let logId = String.randomString(length: 10)
-        print("-- Web service error - start - Id: \(logId) --")
+        print("-- Hellfire service error - start - Id: \(logId) --")
         print("An error occurred for this request: \(serviceError.requestURL?.absoluteString ?? "Request URL was nil.")")
         print("")
         print("HTTP StatusCode: \(serviceError.statusCode)")
         print("")
         print(errorMessage)
         print("")
-
+        
         if serviceError.userCancelledRequest {
             print("Request was cancelled.")
         } else {
-            if HTTPCode.isOk(serviceError.statusCode) == false {
-                var responseAsString = (serviceError.responseBody != nil) ? String(data: serviceError.responseBody!, encoding: String.Encoding.utf8) : ""
-                responseAsString = ((responseAsString ?? "").isEmpty == true) ? "Response: Nothing in response body" : "Response: \(responseAsString!)"
-                print(responseAsString ?? "" as Any)
-            }
+            var responseAsString = (serviceError.responseBody != nil) ? String(data: serviceError.responseBody!, encoding: String.Encoding.utf8) : ""
+            responseAsString = ((responseAsString ?? "").isEmpty == true) ? "Response: Nothing in response body" : "Response: \(responseAsString!)"
+            print(responseAsString ?? "" as Any)
         }
         print("")
-        print("-- Web service error - end - Id: \(logId) --")
-#endif
+        print("-- Hellfire service error - end - Id: \(logId) --")
     }
 }
