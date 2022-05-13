@@ -490,8 +490,8 @@ extension ServiceInterface: URLSessionDelegate {
 }
 
 extension ServiceInterface {
-    /// When build settings has DEBUG configured, this default implementation of global error handler, prints out the service error.
-    func defaultServiceErrorHandler(_ serviceError: ServiceError) -> Void {
+    /// This default implementation of global error handler, prints out the service error.  If the error was a JSONSerializable error, a useful message if printed identifying what and where the issue is with the JSON.
+    public func defaultServiceErrorHandler(_ serviceError: ServiceError) -> Void {
         var errorMessage: NSString
         
         switch serviceError.error {
@@ -522,7 +522,7 @@ extension ServiceInterface {
         print("")
         print(errorMessage)
         print("")
-        
+
         if serviceError.userCancelledRequest {
             print("Request was cancelled.")
         } else {
