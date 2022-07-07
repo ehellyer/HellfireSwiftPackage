@@ -197,11 +197,17 @@ public class ServiceInterface: NSObject {
                     completion(.success(dataResponse))
                 }
                 catch {
-                    let serviceError = self.createServiceError(data: data, statusCode: statusCode, error: error, requestURL: request.url)
+                    let serviceError = self.createServiceError(data: data,
+                                                               statusCode: HTTPCode.jsonDeserializationError.rawValue,
+                                                               error: error,
+                                                               requestURL: request.url)
                     completion(.failure(serviceError))
                 }
             } else {
-                let serviceError = self.createServiceError(data: data, statusCode: statusCode, error: error, requestURL: request.url)
+                let serviceError = self.createServiceError(data: data,
+                                                           statusCode: statusCode,
+                                                           error: error,
+                                                           requestURL: request.url)
                 completion(.failure(serviceError))
             }
         }
