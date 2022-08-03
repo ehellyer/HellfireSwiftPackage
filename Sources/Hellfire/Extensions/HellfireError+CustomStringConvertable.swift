@@ -11,7 +11,7 @@ extension HellfireError: CustomStringConvertible {
     public var description: String {
         switch self {
         case .generalError:
-            return "A general error occured."
+            return "A general error occurred."
         case .multipartEncodingFailed(let reason):
             switch reason {
             case .formPartURLInvalid(let url):

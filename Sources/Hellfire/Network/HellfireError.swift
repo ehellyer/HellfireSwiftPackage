@@ -9,7 +9,7 @@ import Foundation
 
 public enum HellfireError: Error {
     
-    /// General error occured.
+    /// General error occurred.
     case generalError
     
     /// Multipart form encoding failed.

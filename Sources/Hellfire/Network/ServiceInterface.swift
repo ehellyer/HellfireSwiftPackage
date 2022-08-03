@@ -255,7 +255,9 @@ public class ServiceInterface: NSObject {
             //Ask session delegate for additional headers or updates to headers for this request.
             let appHeaders: [HTTPHeader] = self.sessionDelegate?.headerCollection(forRequest: request) ?? []
             appHeaders.forEach({ (header) in
-                urlRequest.setValue(header.value, forHTTPHeaderField: header.name)
+                if urlRequest.value(forHTTPHeaderField: header.name) == nil {
+                    urlRequest.setValue(header.value, forHTTPHeaderField: header.name)
+                }
             })
             
             let task = self.backgroundSession.uploadTask(with: urlRequest, fromFile: requestComponents.requestBody)
