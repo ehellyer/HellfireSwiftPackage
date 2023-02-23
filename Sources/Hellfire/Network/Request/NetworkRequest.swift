@@ -18,7 +18,7 @@ public class NetworkRequest {
     ///   - cachePolicyType: Sets the CachePolicyType to be used on the response.  Default value is .doNotCache
     ///   - timeoutInterval: Sets the connection timeout for the request in seconds.  Default value is 30 seconds.
     ///   - body: Sets the Request http body.   Default value is nil.
-    ///   - headers: Sets the request headers.  These values are set after the delegate sets request header values and so takes precedence.
+    ///   - headers: Sets the request headers.  These values are set after the delegate sets request header values and so header values in the `NetworkRequest` take precedence.
     public init(url: URL,
                 method: HTTPMethod,
                 cachePolicyType: CachePolicyType = .doNotCache,

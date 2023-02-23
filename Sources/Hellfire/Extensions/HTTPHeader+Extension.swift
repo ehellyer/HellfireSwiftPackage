@@ -73,9 +73,18 @@ extension HTTPHeader {
         HTTPHeader(name: "Content-Disposition", value: value)
     }
     
-    ///Returns a `Content-Type` header with the specified string value.
-    public static func contentType(_ value: String) -> HTTPHeader {
-        HTTPHeader(name: "Content-Type", value: value)
+    public struct contentType {
+
+        ///Returns a `Content-Type` header with the specified string value.
+        public static func withValue(_ value: String) -> HTTPHeader {
+            HTTPHeader(name: "Content-Type", value: value)
+        }
+        
+        ///Returns a `content-type` header with `application/json` string value.
+        public static var applicationJSON = HTTPHeader(name: "content-type", value: "application/json")
+        
+        ///Returns a `content-type` header with `application/octet-stream` string value.
+        public static var octetStream = HTTPHeader(name: "content-type", value: "application/octet-stream")
     }
     
     ///Returns a `ContentLength` header with the specified string value.

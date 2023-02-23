@@ -90,10 +90,8 @@ public class ServiceInterface: NSObject {
         return statusCode
     }
     
-    private func sendToDelegateResponseHeadersIn(_ response: URLResponse?, forRequest request: NetworkRequest) -> [HTTPHeader] {
-        let responseHeaders: [HTTPHeader] = self.httpHeadersFrom(response)
+    private func sendToDelegate(responseHeaders: [HTTPHeader], forRequest request: NetworkRequest) {
         self.sessionDelegate?.responseHeaders(headers: responseHeaders, forRequest: request)
-        return responseHeaders
     }
     
     private func httpHeadersFrom(_ response: URLResponse?) -> [HTTPHeader] {
@@ -144,17 +142,17 @@ public class ServiceInterface: NSObject {
         self.reachabilityManager?.stopListening()
         self.reachabilityManager?.listener = nil
         self.reachabilityManager = NetworkReachabilityManager(host: host)
-        self.reachabilityManager?.listener = { [weak self] status in
-            guard let strongSelf = self else { return }
+        self.reachabilityManager?.listener = { [weak self] (status) in
+            guard let self else { return }
             switch status {
             case .notReachable:
-                strongSelf.reachabilityHandler?(.notReachable)
+                self.reachabilityHandler?(.notReachable)
             case .unknown :
-                strongSelf.reachabilityHandler?(.unknown)
+                self.reachabilityHandler?(.unknown)
             case .reachable(.ethernetOrWiFi):
-                strongSelf.reachabilityHandler?(.reachable(.wiFiOrEthernet))
+                self.reachabilityHandler?(.reachable(.wiFiOrEthernet))
             case .reachable(.wwan):
-                strongSelf.reachabilityHandler?(.reachable(.cellular))
+                self.reachabilityHandler?(.reachable(.cellular))
             }
         }
         self.reachabilityManager?.startListening()
@@ -162,12 +160,12 @@ public class ServiceInterface: NSObject {
         
     private func taskResponseHandler(request: NetworkRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping DataTaskResult) {
         let statusCode = self.statusCodeForResponse(response, error: error)
-        
+        let responseHeaders = self.httpHeadersFrom(response)
+        self.sendToDelegate(responseHeaders: responseHeaders, forRequest: request)
+
         if let responseData = data, HTTPCode.isOk(statusCode) {
             self.diskCache.cache(data: responseData, forRequest: request)
         }
-        
-        let responseHeaders = self.sendToDelegateResponseHeadersIn(response, forRequest: request)
         
         //Call completion block
         DispatchQueue.main.async {
@@ -183,13 +181,14 @@ public class ServiceInterface: NSObject {
     
     private func taskResponseHandler<T: JSONSerializable>(request: NetworkRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping JSONTaskResult<T>) {
         let statusCode = self.statusCodeForResponse(response, error: error)
+        let responseHeaders = self.httpHeadersFrom(response)
+        self.sendToDelegate(responseHeaders: responseHeaders, forRequest: request)
         
         //Call completion block
         DispatchQueue.main.async {
             if HTTPCode.isOk(statusCode) {
                 do {
                     let jsonObject = try T.initialize(jsonData: data)
-                    let responseHeaders = self.sendToDelegateResponseHeadersIn(response, forRequest: request)
                     let dataResponse = JSONSerializableResponse<T>(headers: responseHeaders, statusCode: statusCode, jsonObject: jsonObject)
                     if let responseData = data {
                         self.diskCache.cache(data: responseData, forRequest: request)
@@ -215,10 +214,10 @@ public class ServiceInterface: NSObject {
     
     //MARK: - Public Property API
     
-    ///Gets or sets the handler for the reachability status change events.
+    /// Gets or sets the handler for the reachability status change events.
     public var reachabilityHandler: ReachabilityHandler?
     
-    ///Gets or sets the handler for the service error handler
+    /// Gets or sets the handler for the service error handler
     public var serviceErrorHandler: ServiceErrorHandler?
     
     ///  Gets or sets the reachability host (e.g. "www.apple.com").
@@ -277,10 +276,10 @@ public class ServiceInterface: NSObject {
     }
     
     
-    ///Executes the network request asynchronously as a [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask), intended to be a relatively short request.
+    /// Executes the network request asynchronously as a [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask), intended to be a relatively short request.
     ///
-    ///Cached and network responses are called back by dispatching to the main thread and calling the completion block.  For cached responses, the network response object will have a response header added with the name `CachedResponse` with a value of `true`.
-    ///A `RequestTaskIdentifier` is returned for a NetworkRequest that is dispatched to URL session.  This identifier can be used to cancel the network request.
+    /// Cached and network responses are called back by dispatching to the main thread and calling the completion block.  For cached responses, the network response object will have a response header added with the name `CachedResponse` with a value of `true`.
+    /// A `RequestTaskIdentifier` is returned for a NetworkRequest that is dispatched to URL session.  This identifier can be used to cancel the network request.
     /// - Parameters:
     ///     - request: The network request to be executed
     ///     - completion: The completion function to be called with the response.
@@ -313,10 +312,10 @@ public class ServiceInterface: NSObject {
         return taskIdentifier
     }
     
-    ///Executes the network request asynchronously as a [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask), intended to be a relatively short request.
+    /// Executes the network request asynchronously as a [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask), intended to be a relatively short request.
     ///
-    ///Cached and network responses are called back by dispatching to the main thread and calling the completion block.  For cached responses, the network response object will have a response header added with the name `CachedResponse` with a value of `true`.
-    ///A `RequestTaskIdentifier` is returned for a NetworkRequest that is dispatched to URL session.  This identifier can be used to cancel the network request.
+    /// Cached and network responses are called back by dispatching to the main thread and calling the completion block.  For cached responses, the network response object will have a response header added with the name `CachedResponse` with a value of `true`.
+    /// A `RequestTaskIdentifier` is returned for a NetworkRequest that is dispatched to URL session.  This identifier can be used to cancel the network request.
     /// - Parameters:
     ///     - request: The network request to be executed
     ///     - completion: The completion function to be called with the response.
@@ -358,7 +357,7 @@ public class ServiceInterface: NSObject {
         }
     }
     
-    ///Cancels the network request for the specified request task identifier.
+    /// Cancels the network request for the specified request task identifier.
     ///
     /// - Parameters:
     ///     - taskIdentifier: Unique task identifier for the URLSessionTask.
@@ -371,7 +370,7 @@ public class ServiceInterface: NSObject {
         }
     }
     
-    ///Cancels the network request for the specified request task identifier.
+    /// Cancels the network request for the specified request task identifier.
     ///
     /// - Parameters:
     ///     - taskIdentifier: Unique task identifier for the URLSessionTask.
@@ -385,7 +384,7 @@ public class ServiceInterface: NSObject {
         }
     }
     
-    ///Cancels all current network requests on all sessions.
+    /// Cancels all current network requests on all sessions.
     public func cancelAllCurrentRequests() {
         self.backgroundSession.getAllTasks { (backgroundSessionTasks) in
             backgroundSessionTasks.forEach { $0.cancel() }
@@ -395,7 +394,7 @@ public class ServiceInterface: NSObject {
         }
     }
     
-    ///Clears all cached data for any instance of ServiceInterface.
+    /// Clears all cached data for any instance of ServiceInterface.
     public func clearCache() {
         self.diskCache.clearCache()
     }
@@ -453,9 +452,9 @@ extension ServiceInterface: URLSessionDataDelegate {
                            totalBytesExpectedToSend: Int64) {
         DispatchQueue.main.async { [weak self] in
             self?.sessionDelegate?.backgroundTask(task,
-                                                  didSendBytes: Int(bytesSent),
-                                                  totalBytesSent: Int(totalBytesSent),
-                                                  totalBytesExpectedToSend: Int(totalBytesExpectedToSend))
+                                                  didSendBytes: bytesSent,
+                                                  totalBytesSent: totalBytesSent,
+                                                  totalBytesExpectedToSend: totalBytesExpectedToSend)
         }
     }
 }

@@ -49,7 +49,7 @@ public class MultipartFormData {
         
         var headers: [HTTPHeader] = [.contentDisposition(disposition)]
         if let _mimeType = mimeType {
-            headers.append(.contentType(_mimeType))
+            headers.append(.contentType.withValue(_mimeType))
         }
                 
         return headers
@@ -231,7 +231,7 @@ public class MultipartFormData {
     public let fileManager: FileManager
     
     /// Returns the `Content-Type` header as `multipart/form-data`, including the boundary identifier.
-    public lazy var contentType: HTTPHeader = HTTPHeader.contentType("multipart/form-data; boundary=\(self.boundary)")
+    public lazy var contentType: HTTPHeader = HTTPHeader.contentType.withValue("multipart/form-data; boundary=\(self.boundary)")
 
     /// Returns the `Content-Length` header with a total byte count of all the form parts used to generate the `multipart/form-data` not including the boundaries.
     public var contentLength: HTTPHeader {

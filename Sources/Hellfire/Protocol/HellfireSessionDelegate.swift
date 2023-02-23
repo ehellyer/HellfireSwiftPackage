@@ -70,9 +70,9 @@ public protocol HellfireSessionDelegate: AnyObject {
     ///
     ///     Otherwise, the value is [NSURLSessionTransferSizeUnknown](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2Fnsurlsessiontransfersizeunknown) (-1) if you provided a stream or body data object, or zero (0) if you did not.
     func backgroundTask(_ task: URLSessionTask,
-                        didSendBytes bytesSent: Int,
-                        totalBytesSent: Int,
-                        totalBytesExpectedToSend: Int)
+                        didSendBytes bytesSent: Int64,
+                        totalBytesSent: Int64,
+                        totalBytesExpectedToSend: Int64)
     
     /// Requests credentials from the delegate in response to a session-level authentication request from the remote server.
     ///
