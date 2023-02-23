@@ -135,9 +135,9 @@ public extension HellfireSessionDelegate {
                         didCompleteWithResult result: DataResult) { }
     
     func backgroundTask(_ task: URLSessionTask,
-                        didSendBytes bytesSent: Int,
-                        totalBytesSent: Int,
-                        totalBytesExpectedToSend: Int) { }
+                        didSendBytes bytesSent: Int64,
+                        totalBytesSent: Int64,
+                        totalBytesExpectedToSend: Int64) { }
 
     func session(_ session: URLSession,
                  task: URLSessionTask,
