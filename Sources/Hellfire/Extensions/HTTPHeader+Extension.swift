@@ -50,8 +50,8 @@ extension HTTPHeader {
             return "\(osName) \(versionString)"
         }()
         
-        let podVersion = Bundle(for: CachePolicy.self).infoDictionary?["CFBundleShortVersionString"] as? String  ?? "VersionUndetermined"
-        let hellfireVersion = "Hellfire/\(podVersion)"
+
+        let hellfireVersion = "Hellfire/\(version)"
         let deviceLocale = Locale.current.identifier.replacingOccurrences(of: "_", with: "-")
         let userAgent = "\(executable)/\(appVersion) (\(bundle); build:\(appBuild); \(osNameVersion); \(deviceLocale);) \(hellfireVersion)"
         

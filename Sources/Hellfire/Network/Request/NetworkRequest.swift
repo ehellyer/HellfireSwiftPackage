@@ -8,7 +8,7 @@
 
 import Foundation
 
-///The basic request object supplying the minimal information for a network request.  ContentType header value is part of this request, other headers are set later by a delegate call to HellfireSessionDelegate implemented by the application.
+///The basic request object supplying the minimal information for a network request.
 public class NetworkRequest {
     
     /// Default initializer for the NetworkRequest object.  Minimum parameters for a basic request is `url` and `method`.

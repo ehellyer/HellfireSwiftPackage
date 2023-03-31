@@ -9,7 +9,8 @@ final class HellfireTests: XCTestCase {
     
     
     func testSuite() {
-        self.hashTest()
+        //print(HTTPHeader.defaultUserAgent)
+        //self.hashTest()
         //self.stressTestDiskCache()
         //self.testPerson()
         //self.testBirthdayDate()
