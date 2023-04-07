@@ -8,7 +8,7 @@
 
 import Foundation
 
-///EJH - Quick hack for now to make it work.  I need to come up with a better implementation and update this pod.
+///EJH - Quick hack for now to make it work.  I need to come up with a better implementation and update this code.
 class JSONDateFormatter: DateFormatter {
     
     private var dateFormats: [String] = ["yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ", "MM/dd/yyyy"]

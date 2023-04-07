@@ -18,7 +18,8 @@ internal class DiskCache {
     
     internal init(config: DiskCacheConfiguration) {
         let appName = ProcessInfo.processInfo.processName
-        var cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!.absoluteURL
+        var cachePath = FileManager.default.urls(for: .cachesDirectory,
+                                                 in: .userDomainMask).first!.absoluteURL
         cachePath.appendPathComponent("HellfireDiskCache")
         cachePath.appendPathComponent(appName)
         self.cacheRootPath = cachePath
@@ -38,7 +39,8 @@ internal class DiskCache {
     private lazy var cachePolicies = CachePolicies(cacheRootPath: self.cacheRootPath)
     private var diskCacheEnabled = true
     private var activePolicyTrimming = Set<CachePolicyType>()
-    private var cacheTrimConcurrentQueue = DispatchQueue(label: "DiskCache_ConcurrentTrimCacheQueue", qos: DispatchQoS.userInitiated, attributes: .concurrent)
+    private var cacheTrimConcurrentQueue = DispatchQueue(label: "DiskCache_ConcurrentTrimCacheQueue",
+                                                         qos: DispatchQoS.userInitiated, attributes: .concurrent)
     private var serialAccessQueue = DispatchQueue(label: "DiskCache_SerialAccessQueue")
     
     private func getBytesUsed(forPolicy policy: CachePolicy) -> UInt64 {
@@ -114,9 +116,10 @@ internal class DiskCache {
             if let directoryContents = FileManager.contentsOfDirectory(path: policy.cacheFolder,
                                                                        withFileExtension: self.fileExtension)  {
                 for fileUrl in directoryContents {
-                    if let fileAttributes = try? fileUrl.resourceValues(forKeys: [.fileSizeKey]) {
-                        let fileSize = UInt64(fileAttributes.fileSize!)
-                        fileDiskBytesUsed += fileSize
+                    if let fileAttributes = try? fileUrl.resourceValues(forKeys: [.fileSizeKey]),
+                       let fileSize = fileAttributes.fileSize {
+                        let fileSizeU64 = UInt64(fileSize)
+                        fileDiskBytesUsed += fileSizeU64
                     }
                 }
             }
@@ -126,8 +129,8 @@ internal class DiskCache {
     
     private func doesCachedItem(atPath filePath: URL, violateTTLFor policy: CachePolicy) -> Bool {
         var doesViolateTTL = false
-        if let attributes = try? FileManager.default.attributesOfItem(atPath: filePath.path) {
-            let fileCreatedDate = attributes[FileAttributeKey.creationDate] as! Date
+        if let attributes = try? FileManager.default.attributesOfItem(atPath: filePath.path),
+           let fileCreatedDate = attributes[FileAttributeKey.creationDate] as? Date {
             let timeInterval = fileCreatedDate.timeIntervalSinceNow
             if (fabs(timeInterval) > TimeInterval(policy.ttlInSeconds)) {
                 doesViolateTTL = true
@@ -167,44 +170,52 @@ internal class DiskCache {
     
     private func trimCache(forPolicy policy: CachePolicy) {
         self.cacheTrimConcurrentQueue.async { [weak self] in
-            guard let strongSelf = self else { return }
+            guard let self else { return }
             
             let targetBytes = UInt64(Double(policy.maxByteSize) * 0.75)
-            if targetBytes > strongSelf.getBytesUsed(forPolicy: policy) || strongSelf.isTrimmingPolicyType(policy.policyType) {
+            if targetBytes > self.getBytesUsed(forPolicy: policy) || self.isTrimmingPolicyType(policy.policyType) {
                 return
             }
             
-            strongSelf.insertTrimmingPolicyType(policy.policyType)
+            self.insertTrimmingPolicyType(policy.policyType)
             
-            if let directoryContents = FileManager.contentsOfDirectory(path: policy.cacheFolder, withFileExtension: strongSelf.fileExtension) {
+            if let directoryContents = FileManager.contentsOfDirectory(path: policy.cacheFolder,
+                                                                       withFileExtension: self.fileExtension) {
                 //Sort oldest files first in the array.
-                let sortedFilteredContents = try? directoryContents.sorted(by: { (lhs, rhs) -> Bool in
-                    let lhsCreationDate = try lhs.resourceValues(forKeys: [.creationDateKey]).creationDate!
-                    let rhsCreationDate = try rhs.resourceValues(forKeys: [.creationDateKey]).creationDate!
-                    return lhsCreationDate < rhsCreationDate
-                })
+                var sortedDirectoryContents: [URL] = (
+                    try? directoryContents.sorted(by: { (lhs, rhs) -> Bool in
+                        let lhsCreationDate = try lhs.resourceValues(forKeys: [.creationDateKey]).creationDate
+                        let rhsCreationDate = try rhs.resourceValues(forKeys: [.creationDateKey]).creationDate
+                        return self.isDate(lhsCreationDate, before: rhsCreationDate)
+                    })
+                ) ?? []
                 
                 //Remove files until we are within targetBytes
-                if var sortedCache = sortedFilteredContents {
-                    while (targetBytes < strongSelf.getBytesUsed(forPolicy: policy) && sortedCache.isEmpty == false) {
-                        autoreleasepool {
-                            let fileUrl = sortedCache.first
-                            let fileAttributes = try? fileUrl!.resourceValues(forKeys: [.fileSizeKey])
-                            let fileSize = UInt64(fileAttributes!.fileSize!)
-                            try? FileManager.default.removeItem(at: fileUrl!)
-                            _ = strongSelf.decrementBytesUsed(forPolicy: policy, bytes: fileSize)
-                            sortedCache.removeFirst()
+                while sortedDirectoryContents.isEmpty == false && (targetBytes < self.getBytesUsed(forPolicy: policy)) {
+                    autoreleasepool {
+                        if let fileUrl = sortedDirectoryContents.first,
+                           let fileAttributes = try? fileUrl.resourceValues(forKeys: [.fileSizeKey]),
+                           let fileSize = fileAttributes.fileSize {
+                            let fileSizeU64 = UInt64(fileSize)
+                            try? FileManager.default.removeItem(at: fileUrl)
+                            _ = self.decrementBytesUsed(forPolicy: policy, bytes: fileSizeU64)
                         }
+                        sortedDirectoryContents.removeFirst()
                     }
                 }
             }
-            strongSelf.removeTrimmingPolicyType(policy.policyType)
+            self.removeTrimmingPolicyType(policy.policyType)
         }
+    }
+    
+    private func isDate(_ lhs: Date?, before rhs: Date?) -> Bool {
+        guard let lhs, let rhs else { return true }
+        return lhs < rhs
     }
     
     //MARK: - Internal API
     
-    ///Returns the data for the request.
+    /// Returns the data for the request.
     internal func getCacheDataFor(request: NetworkRequest) -> Data? {
         guard self.diskCacheEnabled, request.cachePolicyType != CachePolicyType.doNotCache else { return nil }
         
@@ -221,7 +232,7 @@ internal class DiskCache {
         return data
     }
     
-    ///Stores the data on disk for the request using the specified cache policy
+    /// Stores the data on disk for the request using the specified cache policy
     internal func cache(data: Data, forRequest request: NetworkRequest) {
         guard self.diskCacheEnabled, data.isEmpty == false, request.cachePolicyType != CachePolicyType.doNotCache else { return }
         
@@ -250,14 +261,14 @@ internal class DiskCache {
         _ = self.incrementBytesUsed(forPolicy: policy, bytes: fileSize)
     }
     
-    ///Clear the cache for a specific cache policy.
+    /// Clear the cache for a specific cache policy.
     internal func clearCache(policyType: CachePolicyType) {
         let policy = self.cachePolicies.policy(forType: policyType)
         let _ = self.flushCacheFor(policy: policy)
         self.updateCurrentByteSizeForAllPolicies()
     }
     
-    ///Clear all cache from disk.
+    /// Clear all cache from disk.
     internal func clearCache() {
         let _ = self.flushCache()
         self.updateCurrentByteSizeForAllPolicies()

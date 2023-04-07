@@ -31,14 +31,19 @@ internal extension FileManager {
         isPathValid = FileManager.default.fileExists(atPath: path.path)
         return isPathValid
     }
-
+    
     ///Returns the contents of the specified directory, will ignore hidden files, sub directories and package contents.  Response includes .fileSizeKey and .createdDate properties.
     class func contentsOfDirectory(path: URL, withFileExtension fileExtension: String = "") -> [URL]? {
         var filteredContents: [URL]? = nil
+        let propertyKeys: [URLResourceKey] = [.creationDateKey,
+                                              .fileSizeKey]
+        let options: FileManager.DirectoryEnumerationOptions = [.skipsSubdirectoryDescendants,
+                                                                .skipsHiddenFiles,
+                                                                .skipsPackageDescendants]
         let directoryContents = try? FileManager.default.contentsOfDirectory(at: path,
-                                                                             includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
-                                                                             options: [.skipsSubdirectoryDescendants, .skipsHiddenFiles, .skipsPackageDescendants])
-        filteredContents = fileExtension.isEmpty ? directoryContents : directoryContents?.filter{ $0.pathExtension == fileExtension }
+                                                                             includingPropertiesForKeys: propertyKeys,
+                                                                             options: options)
+        filteredContents = fileExtension.isEmpty ? directoryContents : directoryContents?.filter { $0.pathExtension == fileExtension }
         return filteredContents
     }
 }
