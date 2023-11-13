@@ -8,11 +8,11 @@
 
 import Foundation
 
-/// A protocol this is implemented optionally by the `ServiceInterface` delegate.
+/// A protocol this is implemented optionally by the `SessionInterface` delegate.
 public protocol HellfireSessionDelegate: AnyObject {
     
     /// Asks delegate to return all the additional headers required for the `NetworkRequest`
-    /// - Note: Duplicate headers returned in this call will override those that were set by the `ServiceInterface` based on the `NetworkRequest` parameters and defaults.
+    /// - Note: Duplicate headers returned in this call will override those that were set by the `SessionInterface` based on the `NetworkRequest` parameters and defaults.
     /// - Parameter dataRequest: The `NetworkRequest` that initiated this delegate call.
     func headerCollection(forRequest request: NetworkRequest) -> [HTTPHeader]?
     

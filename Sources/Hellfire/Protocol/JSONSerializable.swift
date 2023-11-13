@@ -30,19 +30,19 @@ class JSONDateFormatter: DateFormatter {
 /// Adds functionality to the Codable protocol so that structs and classes that implement the JSONSerializable protocol can be decoded or encoded with very little effort.
 public protocol JSONSerializable: Codable {
     
-    ///Serializes the object into a data stream of the objects JSON representation.  Typically used for data requests or persisting state.
+    /// Serializes the object into a data stream of the objects JSON representation.  Typically used for data requests or persisting state.
     func toJSONData() throws -> Data
     
-    ///Serializes the object into a JSON string representation.  Typically used for debug.
+    /// Serializes the object into a JSON string representation.  Typically used for debug.
     func toJSONString() throws -> String
     
-    ///Serializes the object into a of type Dictionary<String, Any>
+    /// Serializes the object into a of type Dictionary<String, Any>
     func toJSONObject() throws -> Dictionary<String, Any>
     
-    ///Deserializes the JSON data stream into an instance of the object.  Returns nil if the data stream does not match the target object graph, or the object graphs optionality descriptors.
+    /// Deserializes the JSON data stream into an instance of the object.  Returns nil if the data stream does not match the target object graph, or the object graphs optionality descriptors.
     static func initialize(jsonData: Data?) throws -> Self
     
-    ///Deserializes the dictionary into an instance of the object.  Returns nil if the dictionary representation does not match the target object graph, or the object graphs optionality descriptors.
+    /// Deserializes the dictionary into an instance of the object.  Returns nil if the dictionary representation does not match the target object graph, or the object graphs optionality descriptors.
     static func initialize(dictionary: [String: Any]?) throws -> Self
 }
 

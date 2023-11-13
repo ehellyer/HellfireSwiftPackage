@@ -15,11 +15,11 @@ import CoreServices
 /// MultipartFormData is used to construct the body of a multipart/form-data request.
 ///
 /// For more information on `multipart/form-data` in general, please refer to RFC-7578 (which supersedes RFC-2388) and RFC-2045 specs as well and the w3 form documentation.
-/// - https://tools.ietf.org/html/rfc7578
-/// - https://www.ietf.org/rfc/rfc2388.txt
-/// - https://www.ietf.org/rfc/rfc2045.txt
-/// - https://tools.ietf.org/html/rfc2046
-/// - https://www.w3.org/TR/html401/interact/forms.html#h-17.13
+/// - [https://tools.ietf.org/html/rfc7578](https://tools.ietf.org/html/rfc7578)
+/// - [https://www.ietf.org/rfc/rfc2388.txt](https://www.ietf.org/rfc/rfc2388.txt)
+/// - [https://www.ietf.org/rfc/rfc2045.txt](https://www.ietf.org/rfc/rfc2045.txt)
+/// - [https://tools.ietf.org/html/rfc2046](https://tools.ietf.org/html/rfc2046)
+/// - [https://www.w3.org/TR/html401/interact/forms.html#h-17.13](https://www.w3.org/TR/html401/interact/forms.html#h-17.13)]
 public class MultipartFormData {
     
     private class FormPart {

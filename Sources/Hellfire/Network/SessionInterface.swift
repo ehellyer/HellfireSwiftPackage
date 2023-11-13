@@ -1,5 +1,5 @@
 //
-//  ServiceInterface.swift
+//  SessionInterface.swift
 //  HellFire
 //
 //  Created by Ed Hellyer on 11/01/17.
@@ -14,10 +14,11 @@ public typealias ServiceErrorHandler = (ServiceError) -> Void
 public typealias JSONTaskResult<T: JSONSerializable> = (JSONSerializableResult<T>) -> Void
 public typealias DataTaskResult = (DataResult) -> Void
 
-/// Only one instance per app should be created.  However, rather than trying to enforce this via a singleton, it's up to the app developer when to create multiple instances.
-/// Be aware that DiskCache storage, data task URLSession and background URLSession are shared between multiple ServiceInterface instances.
+/// Only one instance per session should be created.
+///
+/// Be aware that DiskCache storage, data task URLSession and background URLSession are shared between multiple SessionInterface instances.
 /// Concerning DiskCache, although a unique hash insertion key will be created, storage will be shared between the instances.
-public class ServiceInterface: NSObject {
+public class SessionInterface: NSObject {
     
     //MARK: - ServiceInterface overrides API
     
@@ -349,6 +350,10 @@ public class ServiceInterface: NSObject {
         return taskIdentifier
     }
     
+//    public func exec<T: JSONSerializable>() -> JSONTaskResult<T> {
+//
+//    }
+    
     /// Gets all the tasks currently running on the background session.
     /// - Parameter completion: Returns a tuple of three arrays via an asynchronous completion block. ([URLSessionDataTask], [URLSessionUploadTask], [URLSessionDownloadTask])
     public func getBackgroundTasks(completion: @escaping ([URLSessionDataTask], [URLSessionUploadTask], [URLSessionDownloadTask]) -> Void) {
@@ -407,7 +412,7 @@ public class ServiceInterface: NSObject {
 }
 
 //MARK: - URLSessionDataDelegate protocol
-extension ServiceInterface: URLSessionDataDelegate {
+extension SessionInterface: URLSessionDataDelegate {
     
     public func urlSession(_ session: URLSession,
                            dataTask: URLSessionDataTask,
@@ -460,7 +465,7 @@ extension ServiceInterface: URLSessionDataDelegate {
 }
 
 //MARK: - URLSessionTaskDelegate protocol
-extension ServiceInterface: URLSessionTaskDelegate {
+extension SessionInterface: URLSessionTaskDelegate {
     
     public func urlSession(_ session: URLSession,
                            task: URLSessionTask,
@@ -475,7 +480,7 @@ extension ServiceInterface: URLSessionTaskDelegate {
 
 
 //MARK: - URLSessionDelegate protocol
-extension ServiceInterface: URLSessionDelegate {
+extension SessionInterface: URLSessionDelegate {
     
     public func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         self.sessionDelegate?.backgroundSessionDidFinishEvents(session: session)
@@ -496,7 +501,7 @@ extension ServiceInterface: URLSessionDelegate {
     }
 }
 
-extension ServiceInterface {
+extension SessionInterface {
     /// This default implementation of global error handler, prints out the service error.  If the error was a JSONSerializable error, a useful message if printed identifying what and where the issue is with the JSON.
     public func defaultServiceErrorHandler(_ serviceError: ServiceError) -> Void {
         var errorMessage: NSString

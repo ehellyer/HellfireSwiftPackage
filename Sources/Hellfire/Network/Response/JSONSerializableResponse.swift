@@ -10,7 +10,7 @@ import Foundation
 /// Represents the result of a data task request, downloaded as a JSONSerializable type into memory.
 public class JSONSerializableResponse<T: JSONSerializable> {
     
-    /// Creates an instance of `JSONResponse<T>`
+    /// Creates an instance of `JSONSerializableResponse<T>`
     /// - Parameters:
     ///   - headers: Sets the response headers from the server.
     ///   - statusCode: Sets the HTTP result status code.
