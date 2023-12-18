@@ -113,8 +113,7 @@ public protocol HellfireSessionDelegate: AnyObject {
     func backgroundSessionDidFinishEvents(session: URLSession)
 }
 
-//Protocol extension that enables default action for protocol implementation when the delegate does not implement them.
-//Thus making the protocol methods optional for the delegate.
+// Protocol extension that enables default action for protocol implementation when the delegate does not implement them.
 public extension HellfireSessionDelegate {
     
     func headerCollection(forRequest request: NetworkRequest) -> [HTTPHeader]? {

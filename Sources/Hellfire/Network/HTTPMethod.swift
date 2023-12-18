@@ -9,7 +9,7 @@
 import Foundation
 
 //https://tools.ietf.org/html/rfc7231#section-4.3
-///HTTP Methods
+/// HTTP Methods
 public enum HTTPMethod: String, Hashable, JSONSerializable {
     case get = "GET"
     case post = "POST"

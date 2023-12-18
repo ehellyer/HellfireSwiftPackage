@@ -1,5 +1,5 @@
 //
-//  HellfireError+CustomStringConvertable.swift
+//  HellfireError+CustomStringConvertible.swift
 //  Hellfire
 //
 //  Created by Ed Hellyer on 5/4/22.

@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "Hellfire",
     platforms: [
-        .macOS(.v11), .iOS(.v13), .tvOS(.v13)
+        .macOS(.v12), .iOS(.v15), .tvOS(.v15)
     ],
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
@@ -33,6 +33,11 @@ let package = Package(
         .testTarget(
             name: "HellfireTests"
             , dependencies: ["Hellfire"]
+            , resources: [.process("TestData/Company.json"),
+                          .process("TestData/UserContainer.json"),
+                          .process("TestData/PersonArray.json"),
+                          .process("TestData/Person.json"),
+                          .process("TestData/ProductsResponse.json")]
         ),
     ]
 )

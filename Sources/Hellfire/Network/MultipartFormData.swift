@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
 #if os(iOS) || os(watchOS) || os(tvOS)
 import MobileCoreServices
 #elseif os(macOS)
@@ -109,15 +110,8 @@ public class MultipartFormData {
     //MARK: - Private - Mime Type
     
     private func mimeType(forPathExtension pathExtension: String) -> String {
-        if
-            let id = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, pathExtension as CFString, nil)?.takeRetainedValue(),
-            let contentType = UTTypeCopyPreferredTagWithClass(id, kUTTagClassMIMEType)?.takeRetainedValue() {
-            return contentType as String
-        }
-        
-        return "application/octet-stream"
+        return UTType(filenameExtension: pathExtension)?.preferredMIMEType ?? "application/octet-stream"
     }
-
     
     //MARK: - Private - Writing Body Part to Output Stream
     
@@ -296,6 +290,7 @@ public class MultipartFormData {
             try self.write(formPart, to: outputStream)
         }
     }
+    
     
     //MARK: - Append the form parts into the request.
     

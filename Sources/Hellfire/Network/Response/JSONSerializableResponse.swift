@@ -15,7 +15,9 @@ public class JSONSerializableResponse<T: JSONSerializable> {
     ///   - headers: Sets the response headers from the server.
     ///   - statusCode: Sets the HTTP result status code.
     ///   - jsonObject: The jsonObject of `JSONSerializable` type defined in the original request.
-    public init(headers: [HTTPHeader], statusCode: StatusCode, jsonObject: T) {
+    public init(headers: [HTTPHeader], 
+                statusCode: StatusCode,
+                jsonObject: T) {
         self.headers = headers
         self.statusCode = statusCode
         self.jsonObject = jsonObject

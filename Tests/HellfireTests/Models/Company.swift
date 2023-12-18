@@ -11,6 +11,6 @@ import Hellfire
 
 struct Company: JSONSerializable {
     var name: String
-    var catchPhrase: String
-    var bs: String
+    var tagLine: String?
+    var employees: [Person]
 }

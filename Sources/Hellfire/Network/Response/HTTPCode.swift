@@ -56,7 +56,7 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     
     /// The HTTP 206 Partial Content success status response code indicates that the request has succeeded and the body contains the requested ranges of data, as described in the Range header of the request.
     /// If there is only one range, the Content-Type of the whole response is set to the type of the document, and a Content-Range is provided.
-    /// If several ranges are sent back, the Content-Type is set to multipart/byteranges and each fragment covers one range, with Content-Range and Content-Type describing it.
+    /// If several ranges are sent back, the Content-Type is set to multipart/byte ranges and each fragment covers one range, with Content-Range and Content-Type describing it.
     case partialContent = 206
     
     //MARK: - 3xx Redirection
@@ -126,44 +126,13 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     case serviceUnavailable = 503
     case gatewayTimeout = 504
     case httpVersionNotSupported = 505
-    
-    //MARK: - Hellfire custom errors
-    
-    /// The request was successful, but the response was not able to be deserialized into the requested JSONSerializable object.
-    ///
-    /// Failure to deserialize might be a malformed response, or a malformed object definition (think miss-spelled, miss-cased, or just plain wrong) property definition.
-    /// It can also be caused by non-optional properties in the model not having a corresponding value supplied by the server.
-    case jsonDeserializationError = -50000
 }
 
 //MARK: - HTTPCode extension
 extension HTTPCode {
-    
-    /// The kind of the status code.
-    public var responseKind: ResponseKind {
-        switch self.rawValue {
-            case 100...199:
-                return .informational
-            case 200...299:
-                return .successful
-            case 300...399:
-                return .redirection
-            case 400...499:
-                return .clientError
-            case 500...599:
-                return .serverError
-            default:
-                return .hellfireKind
-        }
-    }
-    
+        
     /// Returns true if `StatusCode` is in the range of 200...299.
-    public static func isOk(_ statusCode: StatusCode) -> Bool {
-        return (200...299 ~= statusCode)
-    }
-    
-    /// Returns true when the `StatusCode` == -999, which is the value of `NSURLErrorCancelled` defined in 'URL Loading System Error Codes'.
-    internal static func isCancelled(_ statusCode: StatusCode) -> Bool  {
-        return (statusCode == HellfireError.userCancelled)
+    public static func isOk(_ statusCode: StatusCode?) -> Bool {
+        return (200...299 ~= statusCode ?? -666) 
     }
 }

@@ -17,7 +17,11 @@ public class ServiceError: Error {
     ///   - statusCode: Gets `StatusCode` of the network request.
     ///   - responseBody: Gets response body for the erroring request.
     ///   - userCancelledRequest: Gets the flag to indicate if the network request was cancelled by the user.  Returns true if the user cancelled the request.
-    internal init(requestURL: URL?, error: Error, statusCode: StatusCode, responseBody: Data?, userCancelledRequest: Bool) {
+    internal init(requestURL: URL?,
+                  error: Error,
+                  statusCode: StatusCode?,
+                  responseBody: Data?,
+                  userCancelledRequest: Bool) {
         self.requestURL = requestURL
         self.error = error
         self.statusCode = statusCode
@@ -32,7 +36,7 @@ public class ServiceError: Error {
     public let error: Error
     
     ///Gets `StatusCode` of the network request.
-    public let statusCode: StatusCode
+    public let statusCode: StatusCode?
     
     ///Gets response body for the erroring request.  (Sometimes this might contain a HTML error page from a web service.)
     public let responseBody: Data?

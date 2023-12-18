@@ -233,8 +233,18 @@ internal class DiskCache {
     }
     
     /// Stores the data on disk for the request using the specified cache policy
-    internal func cache(data: Data, forRequest request: NetworkRequest) {
-        guard self.diskCacheEnabled, data.isEmpty == false, request.cachePolicyType != CachePolicyType.doNotCache else { return }
+    /// - Parameters:
+    ///   - data: The data to be cached on disk.  If nil, this function does nothing and returns early.
+    ///   - request: The network request that requested the data to be cached.  The requests cache policy effect how the caching works.  If the cache policy is do not cache, then this function returns early.
+    internal func cache(data: Data?,
+                        forRequest request: NetworkRequest) {
+        
+        guard self.diskCacheEnabled,
+              let data,
+              data.isEmpty == false,
+              request.cachePolicyType != CachePolicyType.doNotCache else {
+            return
+        }
         
         let policy = self.cachePolicies.policy(forType: request.cachePolicyType)
         let requestKey = self.key(forRequest: request)

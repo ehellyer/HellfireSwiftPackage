@@ -1,5 +1,5 @@
 //
-//  Geography.swift
+//  GeoPoint.swift
 //  Hellfire_Example
 //
 //  Created by Ed Hellyer on 9/2/19.
@@ -9,9 +9,7 @@
 import Foundation
 import Hellfire
 
-struct Geography: JSONSerializable {
+struct GeoPoint: JSONSerializable {
     var lat: String
     var lng: String
 }
-
-

@@ -8,7 +8,7 @@
 
 import Foundation
 
-///Represents a name and value of an HTTP header.
+/// Represents a name and value of an HTTP header.
 public struct HTTPHeader: JSONSerializable {
     
     public init(name: String, value: String) {
@@ -16,9 +16,9 @@ public struct HTTPHeader: JSONSerializable {
         self.value = value
     }
     
-    ///Gets the name of the HTTPHeader
+    /// Gets the name of the HTTPHeader
     public let name: String
     
-    ///Gets the values of the HTTPHeader
+    /// Gets the values of the HTTPHeader
     public let value: String
 }
