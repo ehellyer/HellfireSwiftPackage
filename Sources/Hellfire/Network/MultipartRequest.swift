@@ -54,6 +54,3 @@ public class MultipartRequest: NetworkRequest {
         try? self.fileManager.removeItem(at: _requestBodyURL)
     }
 }
-
-
-

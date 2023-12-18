@@ -8,57 +8,39 @@
 
 import Foundation
 
-///EJH - Quick hack for now to make it work.  I need to come up with a better implementation and update this code.
-class JSONDateFormatter: DateFormatter {
-    
-    private var dateFormats: [String] = ["yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ", "MM/dd/yyyy"]
-    
-    override func date(from string: String) -> Date? {
-        var date: Date?
-        for format in self.dateFormats {
-            super.dateFormat = format
-            date = super.date(from: string)
-            if date != nil {
-                break;
-            }
-        }
-        
-        return date
-    }
-}
+
+//MARK: - JSONSerializable protocol Definition
 
 /// Adds functionality to the Codable protocol so that structs and classes that implement the JSONSerializable protocol can be decoded or encoded with very little effort.
 public protocol JSONSerializable: Codable {
     
-    /// Serializes the object into a data stream of the objects JSON representation.  Typically used for data requests or persisting state.
+    /// Serializes the object into a data stream of the objects JSON representation.  Typically used for data requests or persisting state to some permanent storage.
     func toJSONData() throws -> Data
     
-    /// Serializes the object into a JSON string representation.  Typically used for debug.
+    /// Serializes the object into a JSON string representation.  Typically used for debug or persisting state to some permanent storage.
     func toJSONString() throws -> String
     
-    /// Serializes the object into a of type Dictionary<String, Any>
+    /// Serializes the object into a of type Dictionary<String, Any>.  Typically used to make our JS friends happy.
     func toJSONObject() throws -> Dictionary<String, Any>
     
-    /// Deserializes the JSON data stream into an instance of the object.  Returns nil if the data stream does not match the target object graph, or the object graphs optionality descriptors.
     static func initialize(jsonData: Data?) throws -> Self
-    
-    /// Deserializes the dictionary into an instance of the object.  Returns nil if the dictionary representation does not match the target object graph, or the object graphs optionality descriptors.
-    static func initialize(dictionary: [String: Any]?) throws -> Self
 }
 
-public extension JSONSerializable {
+//MARK: - JSONSerializable protocol Implementation
 
+/// Implements the functions of JSONSerializable protocol.
+public extension JSONSerializable {
+    
     func toJSONData() throws -> Data {
         do {
-            let encoder = Self.encoder
-            let encodeObject: Data = try encoder.encode(self)
+            let encodeObject: Data = try Self.jsonEncoder.encode(self)
             return encodeObject
         } catch EncodingError.invalidValue(let invalidValue, let context) {
             let message = "An error occurred encoding object of type \(Self.typeName).  Error message: \(context.debugDescription)  Invalid Value: \(invalidValue)   Decoding path: \(context.codingPath)."
-            throw HellfireError.JSONSerializableError.encodingError.invalidValue(message: message)
+            throw JSONSerializableError.encodingError.invalidValue(message: message)
         } catch {
             let message = "An error occurred encoding object of type \(Self.typeName).  Error message: \(error.localizedDescription)."
-            throw HellfireError.JSONSerializableError.encodingError.exception(message: message)
+            throw JSONSerializableError.encodingError.exception(message: message)
         }
     }
     
@@ -69,139 +51,234 @@ public extension JSONSerializable {
     }
     
     func toJSONObject() throws -> Dictionary<String, Any> {
+        guard self is Array<JSONSerializable> == false else {
+            throw JSONSerializableError.encodingError.exception(message: "Error, cannot convert Array<JSONSerializable> to Dictionary.")
+        }
+        
         let modelData = try self.toJSONData()
         var decodedObject: Dictionary<String, Any>
         do {
             decodedObject = try JSONSerialization.jsonObject(with: modelData, options: .allowFragments) as! [String: Any]
         } catch DecodingError.keyNotFound(let codingKey, let context) {
             let message = "Key not found error decoding instance of `\(Self.typeName)`.Expected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
-            throw HellfireError.JSONSerializableError.decodingError.keyNotFound(message: message)
+            throw JSONSerializableError.decodingError.keyNotFound(message: message)
         } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
             let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
-            throw HellfireError.JSONSerializableError.decodingError.typeMismatch(message: message)
+            throw JSONSerializableError.decodingError.typeMismatch(message: message)
         } catch DecodingError.valueNotFound(let missingKeyType, let context) {
             let message = "Value not found error decoding instance of '\(Self.typeName)'.\nMissing value for type: \(missingKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
-            throw HellfireError.JSONSerializableError.decodingError.valueNotFound(message: message)
+            throw JSONSerializableError.decodingError.valueNotFound(message: message)
         } catch DecodingError.dataCorrupted(let context) {
             let message = "Data corrupted when decoding instance of '\(Self.typeName)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)."
-            throw HellfireError.JSONSerializableError.decodingError.dataCorrupted(message: message)
+            throw JSONSerializableError.decodingError.dataCorrupted(message: message)
         } catch {
-            let message = "Decoding error of type '\(Self.typeName)'.\nError message: \(error.localizedDescription)."
-            throw  HellfireError.JSONSerializableError.decodingError.exception(message: message)
+            let message = "Exception decoding type '\(Self.typeName)'.\nError message: \(error)"
+            throw JSONSerializableError.decodingError.exception(message: message)
         }
         return decodedObject
-    }
-
-    static func initialize(jsonData: Data?) throws -> Self {
-        guard let modelData = jsonData, modelData.count > 0 else {
-            throw HellfireError.JSONSerializableError.zeroLengthResponseFromServer
-        }
-        var decodedObject: Self
-        do {
-            decodedObject = try Self.decoder.decode(Self.self, from: modelData)
-        } catch DecodingError.keyNotFound(let codingKey, let context) {
-            let message = "Key not found error decoding instance of `\(Self.typeName)`.Expected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
-            throw HellfireError.JSONSerializableError.decodingError.keyNotFound(message: message)
-        } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
-            let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
-            throw HellfireError.JSONSerializableError.decodingError.typeMismatch(message: message)
-        } catch DecodingError.valueNotFound(let missingKeyType, let context) {
-            let message = "Value not found error decoding instance of '\(Self.typeName)'.\nMissing value for type: \(missingKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
-            throw HellfireError.JSONSerializableError.decodingError.valueNotFound(message: message)
-        } catch DecodingError.dataCorrupted(let context) {
-            let message = "Data corrupted when decoding instance of '\(Self.typeName)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)."
-            throw HellfireError.JSONSerializableError.decodingError.dataCorrupted(message: message)
-        } catch {
-            let message = "Decoding error of type '\(Self.typeName)'.\nError message: \(error.localizedDescription)."
-            throw  HellfireError.JSONSerializableError.decodingError.exception(message: message)
-        }
-        return decodedObject
-    }
-    
-    static func decodeCodingPath(_ codingPath: [CodingKey]) -> String {
-        return codingPath.compactMap({ $0.stringValue }).joined(separator: " ")
-    }
-    
-    static func initialize(dictionary: [String: Any]?) throws -> Self {
-        guard let dictionary = dictionary, dictionary.keys.count > 0 else {
-            throw HellfireError.JSONSerializableError.zeroLengthResponseFromServer
-        }
-        
-        let data = try JSONSerialization.data(withJSONObject: dictionary, options: [])
-        return try Self.initialize(jsonData: data)
-    }
-    
-    //MARK: - Private Static API
-    
-    fileprivate static var encoder: JSONEncoder {
-        let encoder = JSONEncoder()
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssX"
-        dateFormatter.calendar = Calendar(identifier: .iso8601)
-        encoder.dateEncodingStrategy = .formatted(dateFormatter)
-        return encoder
-    }
-    
-    fileprivate static var decoder: JSONDecoder {
-        let decoder = JSONDecoder()
-        let dateFormatter = JSONDateFormatter()
-        dateFormatter.calendar = Calendar(identifier: .iso8601)
-        decoder.dateDecodingStrategy = .formatted(dateFormatter)
-        return decoder
-    }
-    
-    fileprivate static var typeName: String {
-        let metaTypeStr = String(describing: type(of: self))
-        let index = metaTypeStr.index(metaTypeStr.endIndex, offsetBy: -5)
-        let typeName = metaTypeStr[..<index]
-        return String(typeName)
     }
 }
 
+//MARK: - JSONSerializable Object Initializers
+
+extension JSONSerializable {
+    
+    /// Initialize a new instance from a JSON data representation.
+    ///
+    /// Returns an empty object if the parameter is nil or is the JSON data representation of an empty object, but only if the model definition supports it.
+    /// - Parameter jsonData: The JSON data representation of the type to be decoded.
+    public static func initialize(jsonData: Data?) throws -> Self {
+        
+        /*
+         Nil coalesce to empty representation and let jsonDecoder determine if the definition supports it.
+         If the model definition does not support empty object, JSONSerializable will throw a decoder
+         exception and this will then be handled by the caller as a failed decode operation with all the
+         necessary information to triage.
+         */
+        
+        let modelData = jsonData ?? Self.emptyObjectJSONData
+        
+        do {
+            return try Self.jsonDecoder.decode(Self.self, from: modelData)
+        } catch DecodingError.keyNotFound(let codingKey, let context) {
+            let message = "Key not found error decoding instance of `\(Self.typeName)`.Expected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
+            throw JSONSerializableError.decodingError.keyNotFound(message: message)
+        } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
+            let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
+            throw JSONSerializableError.decodingError.typeMismatch(message: message)
+        } catch DecodingError.valueNotFound(let missingKeyType, let context) {
+            let message = "Value not found error decoding instance of '\(Self.typeName)'.\nMissing value for type: \(missingKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
+            throw JSONSerializableError.decodingError.valueNotFound(message: message)
+        } catch DecodingError.dataCorrupted(let context) {
+            let message = "Data corrupted when decoding instance of '\(Self.typeName)' - check for malformed JSON.\nError message: \(context.debugDescription)"
+            throw JSONSerializableError.decodingError.dataCorrupted(message: message)
+        } catch {
+            let message = "Exception decoding type '\(Self.typeName)'.\nError message: \(error)"
+            throw JSONSerializableError.decodingError.exception(message: message)
+        }
+    }
+    
+    /// Initialize a new instance from a dictionary representation.
+    ///
+    /// Returns an empty object if the parameter is nil or is the JSON data representation of an empty object, but only if the model definition supports it.
+    /// - Parameter dictionary: The dictionary representation of the type to be decoded.
+    public init(dictionary: [String: Any]?) throws {
+        if let dictionary {
+            let data = try JSONSerialization.data(withJSONObject: dictionary, options: [])
+            self = try Self.initialize(jsonData: data)
+        } else {
+            self = try Self.initialize(jsonData: nil)
+        }
+    }
+}
+
+//MARK: - JSONSerializable Array Implementation
+
 extension Array: JSONSerializable where Element: JSONSerializable {
+    
+    /// Initialize a new instance of an Array where the Element type conforms to JSONSerializable, from a JSON data representation.
+    ///
+    /// Returns an empty object if the parameter is nil or is the JSON data representation of an empty object, but only if the model definition supports it.
+    /// - Parameter jsonData: The JSON data representation of the type to be decoded.
+    public static func initialize(jsonData: Data?) throws -> [Element] {
+
+        /*
+         Nil coalesce to empty representation and let jsonDecoder determine if the definition supports it.
+         If the model definition does not support empty object, JSONSerializable will throw a decoder
+         exception and this will then be handled by the caller as a failed decode operation with all the
+         necessary information to triage.
+         */
+        
+        let modelData = jsonData ?? Self.emptyArrayJSONData
+
+        do {
+            return try Element.jsonDecoder.decode([Element].self, from: modelData)
+        } catch DecodingError.keyNotFound(let codingKey, let context) {
+            let message = "Key not found error decoding instance of `\(Self.typeName)`.\nExpected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
+            throw JSONSerializableError.decodingError.keyNotFound(message: message)
+        } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
+            let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
+            throw JSONSerializableError.decodingError.typeMismatch(message: message)
+        } catch DecodingError.valueNotFound(let missingKeyType, let context) {
+            let message = "Value not found error decoding instance of '\(Self.typeName)'.\nMissing value for type: \(missingKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
+            throw JSONSerializableError.decodingError.valueNotFound(message: message)
+        } catch DecodingError.dataCorrupted(let context) {
+            let message = "Data corrupted when decoding instance of '\(Self.typeName)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)"
+            throw JSONSerializableError.decodingError.dataCorrupted(message: message)
+        } catch {
+            let message = "Exception decoding type '\(Self.typeName)'.\nError message: \(error)"
+            throw JSONSerializableError.decodingError.exception(message: message)
+        }
+    }
     
     public func toJSONData() throws -> Data {
         do {
-            let encoder = Element.encoder
-            let encodeObject: Data = try encoder.encode(self)
+            let jsonEncoder = Element.jsonEncoder
+            let encodeObject: Data = try jsonEncoder.encode(self)
             return encodeObject
         } catch EncodingError.invalidValue(let invalidValue, let context) {
             let message = "An error occurred encoding object of type \(Element.typeName).  Error message: \(context.debugDescription)  Invalid Value: \(invalidValue)   Decoding path: \(context.codingPath)."
-            throw HellfireError.JSONSerializableError.encodingError.invalidValue(message: message)
+            throw JSONSerializableError.encodingError.invalidValue(message: message)
         } catch {
-            let message = "An error occurred encoding object of type \(Element.typeName).  Error message: \(error.localizedDescription)."
-            throw HellfireError.JSONSerializableError.encodingError.exception(message: message)
+            let message = "An error occurred encoding object of type \(Element.typeName).  Error message: \(error)"
+            throw JSONSerializableError.encodingError.exception(message: message)
         }
     }
     
-    public static func initialize(jsonData: Data?) throws -> [Element] {
-        guard let modelData = jsonData, modelData.count > 0 else {
-            throw HellfireError.JSONSerializableError.zeroLengthResponseFromServer
-        }
-        
-        var decodedObject: [Element]
-        do {
-            decodedObject = try Element.decoder.decode([Element].self, from: modelData)
-        } catch DecodingError.keyNotFound(let codingKey, let context) {
-            let message = "Key not found error decoding instance of `\(Self.typeName)`.Expected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
-            throw HellfireError.JSONSerializableError.decodingError.keyNotFound(message: message)
-        } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
-            let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
-            throw HellfireError.JSONSerializableError.decodingError.typeMismatch(message: message)
-        } catch DecodingError.valueNotFound(let missingKeyType, let context) {
-            let message = "Value not found error decoding instance of '\(Self.typeName)'.\nMissing value for type: \(missingKeyType)\nDecoding path: \(Self.decodeCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
-            throw HellfireError.JSONSerializableError.decodingError.valueNotFound(message: message)
-        } catch DecodingError.dataCorrupted(let context) {
-            let message = "Data corrupted when decoding instance of '\(Self.typeName)'.\nDecoding path: \(Self.decodeCodingPath(context.codingPath))\nError message: \(context.debugDescription)."
-            throw HellfireError.JSONSerializableError.decodingError.dataCorrupted(message: message)
-        } catch {
-            let message = "Decoding error of type '\(Self.typeName)'.\nError message: \(error.localizedDescription)."
-            throw  HellfireError.JSONSerializableError.decodingError.exception(message: message)
-        }
-        return decodedObject
+    private static var emptyArrayJSONData: Data {
+        return "[]".data(using: .utf8)!
+    }
+}
+
+extension JSONSerializable {
+    
+    //MARK: - Private Static API
+    
+    fileprivate static func decodeCodingPath(_ codingPath: [CodingKey]) -> String {
+        return codingPath.compactMap({ $0.stringValue }).joined(separator: ".")
     }
     
-    public static func initialize(dictionary: [String : Any]?) throws -> Array<Element> {
-        throw HellfireError.JSONSerializableError.inappropriateInit(message: "Init of Array<JSONSerializable> from dictionary is not supported.")
+    fileprivate static var jsonEncoder: JSONEncoder {
+
+        let jsonEncoder = JSONEncoder()
+        jsonEncoder.dateEncodingStrategy = .custom({ (date, encoder) throws -> Void in
+
+            guard let customDateCodableType = (Self.self as? CustomDateCodable.Type) else {
+                throw JSONSerializableError.customDecodableError.notImplemented(message: "Unable to encode Date.type property because `\(Self.typeName)` is missing `CustomDateCodable` implementation.")
+            }
+
+            var container = encoder.singleValueContainer()
+            let dateFormat = try Self.dateFormat(baseType: customDateCodableType, codingPath: container.codingPath)
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = dateFormat
+            let returnDate = dateFormatter.string(from: date)
+            try container.encode(returnDate)
+        })
+
+        return jsonEncoder
+    }
+    
+    fileprivate static var jsonDecoder: JSONDecoder {
+
+        let jsonDecoder = JSONDecoder()
+        jsonDecoder.dateDecodingStrategy = .custom({ (decoder) throws -> Date in
+            
+            guard let customDateCodableType = (Self.self as? CustomDateCodable.Type) else {
+                throw JSONSerializableError.customDecodableError.notImplemented(message: "Unable to decode Date.type property because `\(Self.typeName)` is missing `CustomDateCodable` implementation.")
+            }
+
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            let dateFormat = try Self.dateFormat(baseType: customDateCodableType, codingPath: container.codingPath)
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = dateFormat
+            guard let returnDate = dateFormatter.date(from: dateString) else {
+                throw JSONSerializableError.decodingError.exception(message: "Unable to decode incoming date string \(dateString) into a Date.type using format \(dateFormat)")
+            }
+            return returnDate
+        })
+
+        return jsonDecoder
+    }
+    
+    fileprivate static var typeName: String {
+        return String(describing: Self.self)
+    }
+    
+    private static var emptyObjectJSONData: Data {
+        return "{}".data(using: .utf8)!
+    }
+    
+    private static func dateFormat(baseType: CustomDateCodable.Type, codingPath: [CodingKey]) throws -> String {
+        guard let key: String = codingPath.last?.stringValue else {
+            throw JSONSerializableError.customDecodableError.keyNotFound(message: "No key found in CustomDateDecodable list defined in `\(Self.typeName)`.")
+        }
+        guard let dateFormat = baseType.dateFormats.first(where: {
+            return $0.key == key
+        })?.value else {
+            throw JSONSerializableError.customDecodableError.keyNotFound(message: "No key found in CustomDateDecodable list defined in `\(Self.typeName)` for key: '\(key)'")
+        }
+        return dateFormat
+    }
+}
+
+public enum JSONSerializableError: Error {
+    
+    public enum customDecodableError: Error {
+        case keyNotFound(message: String)
+        case notImplemented(message: String)
+    }
+    
+    public enum encodingError: Error {
+        case invalidValue(message: String)
+        case exception(message: String)
+    }
+    
+    public enum decodingError: Error {
+        case keyNotFound(message: String)
+        case typeMismatch(message: String)
+        case valueNotFound(message: String)
+        case dataCorrupted(message: String)
+        case exception(message: String)
     }
 }

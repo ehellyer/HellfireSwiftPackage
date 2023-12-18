@@ -79,15 +79,8 @@ public class SessionInterface: NSObject {
     
     //MARK: - Private Func API
     
-    private func statusCodeForResponse(_ response: URLResponse?, error: Error?) -> StatusCode {
-        /*
-         In Hellfire, we always want to have a value in statusCode for easier error detection.
-         This means that for non URL response errors, we set the statusCode to the negative values of 'URL Loading System Error Codes'.
-         */
-        let statusCode: StatusCode = (response as? HTTPURLResponse)?.statusCode ??
-        (error as NSError?)?.code ??
-        //We should never get to this last option.  But if there was no statusCode from the response and there was no error instance, we are defaulting to HTTP.ok
-        HTTPCode.ok.rawValue
+    private func statusCodeForResponse(_ response: URLResponse?) -> StatusCode? {
+        let statusCode: StatusCode? = (response as? HTTPURLResponse)?.statusCode
         return statusCode
     }
     
@@ -101,10 +94,17 @@ public class SessionInterface: NSObject {
         return httpHeaders
     }
     
-    private func createServiceError(data: Data?, statusCode: StatusCode, error: Error?, requestURL: URL?) -> ServiceError {
-        let requestCancelled = HTTPCode.wasRequestCancelled(statusCode: statusCode)
+    private func createServiceError(data: Data?,
+                                    statusCode: StatusCode?,
+                                    error: Error?,
+                                    requestURL: URL?) -> ServiceError {
+        let requestCancelled = (error as NSError?)?.code == HellfireError.userCancelled
         let error = error ?? HellfireError.generalError
-        let serviceError = ServiceError(requestURL: requestURL, error: error, statusCode: statusCode, responseBody: data, userCancelledRequest: requestCancelled)
+        let serviceError = ServiceError(requestURL: requestURL,
+                                        error: error,
+                                        statusCode: statusCode,
+                                        responseBody: data,
+                                        userCancelledRequest: requestCancelled)
         if let serviceErrorHandler = self.serviceErrorHandler {
             serviceErrorHandler(serviceError)
         } else {
@@ -146,24 +146,28 @@ public class SessionInterface: NSObject {
         self.reachabilityManager?.listener = { [weak self] (status) in
             guard let self else { return }
             switch status {
-            case .notReachable:
-                self.reachabilityHandler?(.notReachable)
-            case .unknown :
-                self.reachabilityHandler?(.unknown)
-            case .reachable(.ethernetOrWiFi):
-                self.reachabilityHandler?(.reachable(.wiFiOrEthernet))
-            case .reachable(.wwan):
-                self.reachabilityHandler?(.reachable(.cellular))
+                case .notReachable:
+                    self.reachabilityHandler?(.notReachable)
+                case .unknown :
+                    self.reachabilityHandler?(.unknown)
+                case .reachable(.ethernetOrWiFi):
+                    self.reachabilityHandler?(.reachable(.wiFiOrEthernet))
+                case .reachable(.wwan):
+                    self.reachabilityHandler?(.reachable(.cellular))
             }
         }
         self.reachabilityManager?.startListening()
     }
-        
-    private func taskResponseHandler(request: NetworkRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping DataTaskResult) {
-        let statusCode = self.statusCodeForResponse(response, error: error)
+    
+    private func taskResponseHandler(request: NetworkRequest,
+                                     data: Data?,
+                                     response: URLResponse?,
+                                     error: Error?,
+                                     completion: @escaping DataTaskResult) {
+        let statusCode = self.statusCodeForResponse(response)
         let responseHeaders = self.httpHeadersFrom(response)
         self.sendToDelegate(responseHeaders: responseHeaders, forRequest: request)
-
+        
         if let responseData = data, HTTPCode.isOk(statusCode) {
             self.diskCache.cache(data: responseData, forRequest: request)
         }
@@ -171,17 +175,26 @@ public class SessionInterface: NSObject {
         //Call completion block
         DispatchQueue.main.async {
             if HTTPCode.isOk(statusCode) {
-                let dataResponse = DataResponse(headers: responseHeaders, body: data, statusCode: statusCode)
+                let dataResponse = DataResponse(headers: responseHeaders,
+                                                statusCode: statusCode!,
+                                                body: data)
                 completion(.success(dataResponse))
             } else {
-                let serviceError = self.createServiceError(data: data, statusCode: statusCode, error: error, requestURL: request.url)
+                let serviceError = self.createServiceError(data: data,
+                                                           statusCode: statusCode,
+                                                           error: error,
+                                                           requestURL: request.url)
                 completion(.failure(serviceError))
             }
         }
     }
     
-    private func taskResponseHandler<T: JSONSerializable>(request: NetworkRequest, data: Data?, response: URLResponse?, error: Error?, completion: @escaping JSONTaskResult<T>) {
-        let statusCode = self.statusCodeForResponse(response, error: error)
+    private func taskResponseHandler<T: JSONSerializable>(request: NetworkRequest,
+                                                          data: Data?,
+                                                          response: URLResponse?,
+                                                          error: Error?,
+                                                          completion: @escaping JSONTaskResult<T>) {
+        let statusCode = self.statusCodeForResponse(response)
         let responseHeaders = self.httpHeadersFrom(response)
         self.sendToDelegate(responseHeaders: responseHeaders, forRequest: request)
         
@@ -190,15 +203,16 @@ public class SessionInterface: NSObject {
             if HTTPCode.isOk(statusCode) {
                 do {
                     let jsonObject = try T.initialize(jsonData: data)
-                    let dataResponse = JSONSerializableResponse<T>(headers: responseHeaders, statusCode: statusCode, jsonObject: jsonObject)
+                    let dataResponse = JSONSerializableResponse<T>(headers: responseHeaders,
+                                                                   statusCode: statusCode!,
+                                                                   jsonObject: jsonObject)
                     if let responseData = data {
                         self.diskCache.cache(data: responseData, forRequest: request)
                     }
                     completion(.success(dataResponse))
-                }
-                catch {
+                } catch {
                     let serviceError = self.createServiceError(data: data,
-                                                               statusCode: HTTPCode.jsonDeserializationError.rawValue,
+                                                               statusCode: statusCode,
                                                                error: error,
                                                                requestURL: request.url)
                     completion(.failure(serviceError))
@@ -260,7 +274,8 @@ public class SessionInterface: NSObject {
                 }
             })
             
-            let task = self.backgroundSession.uploadTask(with: urlRequest, fromFile: requestComponents.requestBody)
+            let task = self.backgroundSession.uploadTask(with: urlRequest,
+                                                         fromFile: requestComponents.requestBody)
             let taskIdentifier = UUID()
             task.requestItem = RequestItem(identifier: taskIdentifier, networkRequest: request)
             task.taskDescription = taskIdentifier.uuidString
@@ -268,14 +283,13 @@ public class SessionInterface: NSObject {
             return taskIdentifier
         } catch (let error) {
             let serviceError = self.createServiceError(data: error.localizedDescription.data(using: .utf8),
-                                                       statusCode: -666,
+                                                       statusCode: nil,
                                                        error: error,
                                                        requestURL: request.url)
             
             throw HellfireError.ServiceRequestError.unableToCreateTask(result: DataResult.failure(serviceError))
         }
     }
-    
     
     /// Executes the network request asynchronously as a [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask), intended to be a relatively short request.
     ///
@@ -285,12 +299,13 @@ public class SessionInterface: NSObject {
     ///     - request: The network request to be executed
     ///     - completion: The completion function to be called with the response.
     /// - Returns: `RequestTaskIdentifier`  Unique task identifier for the [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask).  This identifier can be used to cancel the network request.
-    public func execute(_ request: NetworkRequest, completion: @escaping DataTaskResult) -> RequestTaskIdentifier? {
+    public func execute(_ request: NetworkRequest,
+                        completion: @escaping DataTaskResult) -> RequestTaskIdentifier? {
         if let cachedResponse = hasCachedResponse(forRequest: request) {
             DispatchQueue.main.async {
                 let dataResponse = DataResponse(headers: [HTTPHeader(name: "CachedResponse", value: "true")],
-                                                body: cachedResponse,
-                                                statusCode: HTTPCode.ok.rawValue)
+                                                statusCode: HTTPCode.ok.rawValue,
+                                                body: cachedResponse)
                 completion(.success(dataResponse))
             }
             return nil
@@ -298,12 +313,12 @@ public class SessionInterface: NSObject {
         
         let urlRequest = self.urlRequest(fromNetworkRequest: request)
         let task = self.dataTaskSession.dataTask(with: urlRequest) { [weak self] data, response, error in
-            guard let strongSelf = self else { return }
-            strongSelf.taskResponseHandler(request: request,
-                                           data: data,
-                                           response: response,
-                                           error: error,
-                                           completion: completion)
+            guard let self else { return }
+            self.taskResponseHandler(request: request,
+                                     data: data,
+                                     response: response,
+                                     error: error,
+                                     completion: completion)
         }
         
         let taskIdentifier = UUID()
@@ -321,7 +336,8 @@ public class SessionInterface: NSObject {
     ///     - request: The network request to be executed
     ///     - completion: The completion function to be called with the response.
     /// - Returns: `RequestTaskIdentifier`  Unique task identifier for the [URLSessionDataTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionDataTask).  This identifier can be used to cancel the network request.
-    public func execute<T: JSONSerializable>(_ request: NetworkRequest, completion: @escaping JSONTaskResult<T>) -> RequestTaskIdentifier? {
+    public func execute<T: JSONSerializable>(_ request: NetworkRequest,
+                                             completion: @escaping JSONTaskResult<T>) -> RequestTaskIdentifier? {
         
         if let cachedResponse = hasCachedResponse(forRequest: request), let jsonObject = try? T.initialize(jsonData: cachedResponse) {
             DispatchQueue.main.async {
@@ -335,12 +351,12 @@ public class SessionInterface: NSObject {
         
         let urlRequest = self.urlRequest(fromNetworkRequest: request)
         let task = self.dataTaskSession.dataTask(with: urlRequest) { [weak self] data, response, error in
-            guard let strongSelf = self else { return }
-            strongSelf.taskResponseHandler(request: request,
-                                           data: data,
-                                           response: response,
-                                           error: error,
-                                           completion: completion)
+            guard let self else { return }
+            self.taskResponseHandler(request: request,
+                                     data: data,
+                                     response: response,
+                                     error: error,
+                                     completion: completion)
         }
         
         let taskIdentifier = UUID()
@@ -349,10 +365,6 @@ public class SessionInterface: NSObject {
         task.resume()
         return taskIdentifier
     }
-    
-//    public func exec<T: JSONSerializable>() -> JSONTaskResult<T> {
-//
-//    }
     
     /// Gets all the tasks currently running on the background session.
     /// - Parameter completion: Returns a tuple of three arrays via an asynchronous completion block. ([URLSessionDataTask], [URLSessionUploadTask], [URLSessionDownloadTask])
@@ -426,14 +438,14 @@ extension SessionInterface: URLSessionDataDelegate {
     public func urlSession(_ session: URLSession,
                            task: URLSessionTask,
                            didCompleteWithError error: Error?) {
-        let statusCode = self.statusCodeForResponse(task.response, error: error)
+        let statusCode = self.statusCodeForResponse(task.response)
         let responseHeaders: [HTTPHeader] = self.httpHeadersFrom(task.response)
         var result: DataResult
         
         if HTTPCode.isOk(statusCode) {
             let dataResponse = DataResponse(headers: responseHeaders,
-                                            body: nil,
-                                            statusCode: statusCode)
+                                            statusCode: statusCode!,
+                                            body: nil)
             result = .success(dataResponse)
         } else {
             let serviceError = self.createServiceError(data: nil,
@@ -507,34 +519,32 @@ extension SessionInterface {
         var errorMessage: NSString
         
         switch serviceError.error {
-        case HellfireError.JSONSerializableError.decodingError.keyNotFound(let message):
-            errorMessage = message as NSString
-        case HellfireError.JSONSerializableError.decodingError.valueNotFound(let message):
-            errorMessage = message as NSString
-        case HellfireError.JSONSerializableError.decodingError.dataCorrupted(let message):
-            errorMessage = message as NSString
-        case HellfireError.JSONSerializableError.decodingError.typeMismatch(let message):
-            errorMessage = message as NSString
-        case HellfireError.JSONSerializableError.decodingError.exception(let message):
-            errorMessage = message as NSString
-        case HellfireError.JSONSerializableError.inappropriateInit(let message):
-            errorMessage = message as NSString
-        case HellfireError.JSONSerializableError.zeroLengthResponseFromServer:
-            errorMessage = "Response body contained zero bytes."
-        default:
-            errorMessage = "Error: \(serviceError.error.localizedDescription)" as NSString
+            case JSONSerializableError.decodingError.keyNotFound(let message):
+                errorMessage = message as NSString
+            case JSONSerializableError.decodingError.valueNotFound(let message):
+                errorMessage = message as NSString
+            case JSONSerializableError.decodingError.dataCorrupted(let message):
+                errorMessage = message as NSString
+            case JSONSerializableError.decodingError.typeMismatch(let message):
+                errorMessage = message as NSString
+            case JSONSerializableError.decodingError.exception(let message):
+                errorMessage = message as NSString
+            default:
+                errorMessage = "Error: \(serviceError.error.localizedDescription)" as NSString
         }
-
+        
         
         let logId = String.randomString(length: 10)
         print("-- Hellfire service error - start - Id: \(logId) --")
         print("An error occurred for this request: \(serviceError.requestURL?.absoluteString ?? "Request URL was nil.")")
         print("")
-        print("HTTP StatusCode: \(serviceError.statusCode)")
+        if let statusCode = serviceError.statusCode {
+            print("HTTP StatusCode: \(statusCode)")
+        }
         print("")
         print(errorMessage)
         print("")
-
+        
         if serviceError.userCancelledRequest {
             print("Request was cancelled.")
         } else {

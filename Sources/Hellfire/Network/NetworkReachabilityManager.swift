@@ -214,11 +214,8 @@ extension NetworkReachabilityManager.NetworkReachabilityStatus: Equatable {}
 /// - parameter rhs: The right-hand side value to compare.
 ///
 /// - returns: `true` if the two values are equal, `false` otherwise.
-public func ==(
-    lhs: NetworkReachabilityManager.NetworkReachabilityStatus,
-    rhs: NetworkReachabilityManager.NetworkReachabilityStatus)
-    -> Bool
-{
+public func ==(lhs: NetworkReachabilityManager.NetworkReachabilityStatus,
+               rhs: NetworkReachabilityManager.NetworkReachabilityStatus) -> Bool {
     switch (lhs, rhs) {
     case (.unknown, .unknown):
         return true

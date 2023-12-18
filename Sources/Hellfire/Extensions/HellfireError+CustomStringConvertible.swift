@@ -1,5 +1,5 @@
 //
-//  HellfireError+CustomStringConvertable.swift
+//  HellfireError+CustomStringConvertible.swift
 //  Hellfire
 //
 //  Created by Ed Hellyer on 5/4/22.
@@ -49,6 +49,10 @@ extension HellfireError: CustomStringConvertible {
             case .inputStreamReadFailed(let error):
                 return "InputStream read failed with error: \(error)"
             }
+            case .serviceError(let serviceError):
+                return """
+                A general error occurred. \(serviceError.localizedDescription)
+                """
         }
     }
 }

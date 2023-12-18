@@ -14,6 +14,6 @@ struct Address: JSONSerializable {
     var suite: String
     var city: String
     var zipcode: String
-    var geo: Geography
+    var geo: GeoPoint
 }
 

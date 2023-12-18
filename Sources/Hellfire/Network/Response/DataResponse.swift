@@ -13,20 +13,22 @@ public class DataResponse {
     /// Creates an instance of `DataResponse`
     /// - Parameters:
     ///   - headers: Sets the response headers from the server.
-    ///   - body: Sets the response body from the server.
     ///   - statusCode: Sets the HTTP result status code.
-    public init(headers: [HTTPHeader], body: Data?, statusCode: StatusCode) {
+    ///   - body: Sets the response body from the server.
+    public init(headers: [HTTPHeader],
+                statusCode: StatusCode,
+                body: Data?) {
         self.headers = headers
-        self.body = body
         self.statusCode = statusCode
+        self.body = body
     }
     
     /// Gets the response headers from the server.
     public let headers: [HTTPHeader]
     
-    /// Gets the response body from the server.
-    public let body: Data?
-    
     /// Gets the HTTP result status code.
     public let statusCode: StatusCode
+    
+    /// Gets the response body from the server.
+    public let body: Data?
 }

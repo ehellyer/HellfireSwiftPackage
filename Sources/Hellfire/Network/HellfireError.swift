@@ -12,6 +12,8 @@ public enum HellfireError: Error {
     /// General error occurred.
     case generalError
     
+    case serviceError(ServiceError)
+    
     /// Multipart form encoding failed.
     case multipartEncodingFailed(reason: MultipartEncodingFailureReason)
     
@@ -43,27 +45,6 @@ public enum HellfireError: Error {
         case outputStreamWriteFailed(error: Error)
         /// The attempt to read an encoded form part `InputStream` failed with underlying system error.
         case inputStreamReadFailed(error: Error)
-    }
-    
-    public enum JSONSerializableError: Error {
-        /// No data in the response to create an instance from.
-        case zeroLengthResponseFromServer
-        
-        /// Inappropriate JSONSerializable initializer for an array.
-        case inappropriateInit(message: String)
-
-        public enum encodingError: Error {
-            case invalidValue(message: String)
-            case exception(message: String)
-        }
-        
-        public enum decodingError: Error {
-            case keyNotFound(message: String)
-            case typeMismatch(message: String)
-            case valueNotFound(message: String)
-            case dataCorrupted(message: String)
-            case exception(message: String)
-        }
     }
     
     /// The URLSessionTask was unable to be created.  Specific reasons, if known, will be in the ServiceError response.

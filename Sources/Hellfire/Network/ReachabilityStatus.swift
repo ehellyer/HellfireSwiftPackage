@@ -22,14 +22,14 @@ public enum ReachabilityStatus {
 extension ReachabilityStatus: Equatable {
     public static func == (lhs: ReachabilityStatus, rhs: ReachabilityStatus) -> Bool {
         switch (lhs, rhs) {
-        case (.unknown, .unknown):
-            return true
-        case (.notReachable, .notReachable):
-            return true
-        case let (.reachable(lhsConnectionType), .reachable(rhsConnectionType)):
-            return lhsConnectionType == rhsConnectionType
-        default:
-            return false
+            case (.unknown, .unknown):
+                return true
+            case (.notReachable, .notReachable):
+                return true
+            case let (.reachable(lhsConnectionType), .reachable(rhsConnectionType)):
+                return lhsConnectionType == rhsConnectionType
+            default:
+                return false
         }
     }
 }
