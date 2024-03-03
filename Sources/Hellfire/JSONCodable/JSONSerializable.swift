@@ -205,20 +205,31 @@ extension JSONSerializable {
         
         return debugString
     }
-    
+
     fileprivate static var jsonEncoder: JSONEncoder {
         let jsonEncoder = JSONEncoder()
+        jsonEncoder.dateEncodingStrategy = .formatted(ISO8601DateFormatter.dateFormatter)
         return jsonEncoder
     }
     
     fileprivate static var jsonDecoder: JSONDecoder {
         let jsonDecoder = JSONDecoder()
+        jsonDecoder.dateDecodingStrategy = .formatted(ISO8601DateFormatter.dateFormatter)
         return jsonDecoder
     }
     
     fileprivate static var typeName: String {
         return String(describing: Self.self)
     }
+}
+
+/// Codable using format: "yyyy-MM-dd'T'HH:mm:ssZ"
+fileprivate struct ISO8601DateFormatter {
+    static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        return formatter
+    }()
 }
 
 public enum JSONSerializableError: Error {
