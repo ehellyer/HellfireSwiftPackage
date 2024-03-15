@@ -102,7 +102,6 @@ internal class MD5Hash {
         var output: [CUnsignedChar] = []
         
         for i in stride(from: 0, to: input.count * 32, by: 8) {
-            // [i>>5] >>>
             let value: Int32 = zeroFillRightShift(input[i>>5], Int32(i % 32)) & 0xFF
             output.append(CUnsignedChar(value))
         }

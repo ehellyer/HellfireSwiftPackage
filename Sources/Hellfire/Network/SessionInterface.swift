@@ -174,9 +174,9 @@ public class SessionInterface: NSObject {
         
         //Call completion block
         DispatchQueue.main.async {
-            if HTTPCode.isOk(statusCode) {
+            if error == nil && HTTPCode.isOk(statusCode) {
                 let dataResponse = DataResponse(headers: responseHeaders,
-                                                statusCode: statusCode!,
+                                                statusCode: statusCode,
                                                 body: data)
                 completion(.success(dataResponse))
             } else {
@@ -200,11 +200,12 @@ public class SessionInterface: NSObject {
         
         //Call completion block
         DispatchQueue.main.async {
-            if HTTPCode.isOk(statusCode) {
+            let statusCode = statusCode ?? HTTPCode.ok.rawValue
+            if error == nil && HTTPCode.isOk(statusCode) {
                 do {
                     let jsonObject = try T.initialize(jsonData: data)
                     let dataResponse = JSONSerializableResponse<T>(headers: responseHeaders,
-                                                                   statusCode: statusCode!,
+                                                                   statusCode: statusCode,
                                                                    jsonObject: jsonObject)
                     if let responseData = data {
                         self.diskCache.cache(data: responseData, forRequest: request)
@@ -444,7 +445,7 @@ extension SessionInterface: URLSessionDataDelegate {
         
         if HTTPCode.isOk(statusCode) {
             let dataResponse = DataResponse(headers: responseHeaders,
-                                            statusCode: statusCode!,
+                                            statusCode: statusCode,
                                             body: nil)
             result = .success(dataResponse)
         } else {

@@ -16,7 +16,7 @@ public class DataResponse {
     ///   - statusCode: Sets the HTTP result status code.
     ///   - body: Sets the response body from the server.
     public init(headers: [HTTPHeader],
-                statusCode: StatusCode,
+                statusCode: StatusCode?,
                 body: Data?) {
         self.headers = headers
         self.statusCode = statusCode
@@ -27,7 +27,7 @@ public class DataResponse {
     public let headers: [HTTPHeader]
     
     /// Gets the HTTP result status code.
-    public let statusCode: StatusCode
+    public let statusCode: StatusCode?
     
     /// Gets the response body from the server.
     public let body: Data?

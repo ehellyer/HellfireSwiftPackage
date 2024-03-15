@@ -131,8 +131,9 @@ public enum HTTPCode: StatusCode, JSONSerializable {
 //MARK: - HTTPCode extension
 extension HTTPCode {
         
-    /// Returns true if `StatusCode` is in the range of 200...299.
+    /// Returns true if `StatusCode` is in the range of 200...299 or if statusCode is nil.
     public static func isOk(_ statusCode: StatusCode?) -> Bool {
-        return (200...299 ~= statusCode ?? -666) 
+        guard let statusCode else { return true }
+        return (200...299 ~= statusCode)
     }
 }

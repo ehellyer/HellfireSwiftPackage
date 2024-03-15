@@ -47,10 +47,6 @@ public protocol HellfireSessionDelegate: AnyObject {
                  didReceive data: Data)
     
     /// Tells the delegate that the background `URLSessionUploadTask` finished transferring data in the background.
-    /// - Parameter result: Represents the success or failure result of a `NetworkRequest`.
-    
-    
-    /// Tells the delegate that the background `URLSessionUploadTask` finished transferring data in the background.
     /// - Parameters:
     ///   - task: URLSessionTask for this response.
     ///   - requestTaskIdentifier: Unique task identifier for the URLSessionTask.
@@ -97,9 +93,9 @@ public protocol HellfireSessionDelegate: AnyObject {
     
     //Handles task specific challenges.  e.g. Username/Password
     func session(_ session: URLSession,
-                    task: URLSessionTask,
-                    didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+                 task: URLSessionTask,
+                 didReceive challenge: URLAuthenticationChallenge,
+                 completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
     
     /// Tells the delegate that all messages enqueued for a session have been delivered.
     ///
@@ -137,7 +133,7 @@ public extension HellfireSessionDelegate {
                         didSendBytes bytesSent: Int64,
                         totalBytesSent: Int64,
                         totalBytesExpectedToSend: Int64) { }
-
+    
     func session(_ session: URLSession,
                  task: URLSessionTask,
                  didReceive challenge: URLAuthenticationChallenge,
