@@ -39,7 +39,7 @@ final class SessionInterfaceTests: XCTestCase {
         let expectation = self.expectation(description: "Waiting for network call to complete.")
         
         let interface = SessionInterface.sharedInstance
-        let request = NetworkRequest(url: URL(string: "https://api.escuelajs.co/api/v1/products")!, method: .get)
+        let request = NetworkRequest(url: URL(string: "https://api.escuelajs.co/api/v1/products")!, method: .get, timeoutInterval: 2)
         let _ = interface.execute(request) { (result: JSONSerializableResult<[ProductElement]>) in
             switch result {
                 case .success(let dataResponse):

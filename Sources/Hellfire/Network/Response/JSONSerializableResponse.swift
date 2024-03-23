@@ -16,7 +16,7 @@ public class JSONSerializableResponse<T: JSONSerializable> {
     ///   - statusCode: Sets the HTTP result status code.
     ///   - jsonObject: The jsonObject of `JSONSerializable` type defined in the original request.
     public init(headers: [HTTPHeader], 
-                statusCode: StatusCode,
+                statusCode: StatusCode?,
                 jsonObject: T) {
         self.headers = headers
         self.statusCode = statusCode
@@ -30,5 +30,5 @@ public class JSONSerializableResponse<T: JSONSerializable> {
     public let jsonObject: T
     
     /// Gets the HTTP result status code.
-    public let statusCode: StatusCode
+    public let statusCode: StatusCode?
 }

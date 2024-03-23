@@ -78,6 +78,26 @@ public class SessionInterface: NSObject {
     }()
     
     //MARK: - Private Func API
+
+    private func setupReachabilityManager(host: String) {
+        self.reachabilityManager?.stopListening()
+        self.reachabilityManager?.listener = nil
+        self.reachabilityManager = NetworkReachabilityManager(host: host)
+        self.reachabilityManager?.listener = { [weak self] (status) in
+            guard let self else { return }
+            switch status {
+                case .notReachable:
+                    self.reachabilityHandler?(.notReachable)
+                case .unknown :
+                    self.reachabilityHandler?(.unknown)
+                case .reachable(.ethernetOrWiFi):
+                    self.reachabilityHandler?(.reachable(.wiFiOrEthernet))
+                case .reachable(.wwan):
+                    self.reachabilityHandler?(.reachable(.cellular))
+            }
+        }
+        self.reachabilityManager?.startListening()
+    }
     
     private func statusCodeForResponse(_ response: URLResponse?) -> StatusCode? {
         let statusCode: StatusCode? = (response as? HTTPURLResponse)?.statusCode
@@ -139,26 +159,6 @@ public class SessionInterface: NSObject {
         return nil
     }
     
-    private func setupReachabilityManager(host: String) {
-        self.reachabilityManager?.stopListening()
-        self.reachabilityManager?.listener = nil
-        self.reachabilityManager = NetworkReachabilityManager(host: host)
-        self.reachabilityManager?.listener = { [weak self] (status) in
-            guard let self else { return }
-            switch status {
-                case .notReachable:
-                    self.reachabilityHandler?(.notReachable)
-                case .unknown :
-                    self.reachabilityHandler?(.unknown)
-                case .reachable(.ethernetOrWiFi):
-                    self.reachabilityHandler?(.reachable(.wiFiOrEthernet))
-                case .reachable(.wwan):
-                    self.reachabilityHandler?(.reachable(.cellular))
-            }
-        }
-        self.reachabilityManager?.startListening()
-    }
-    
     private func taskResponseHandler(request: NetworkRequest,
                                      data: Data?,
                                      response: URLResponse?,
@@ -168,12 +168,14 @@ public class SessionInterface: NSObject {
         let responseHeaders = self.httpHeadersFrom(response)
         self.sendToDelegate(responseHeaders: responseHeaders, forRequest: request)
         
-        if let responseData = data, HTTPCode.isOk(statusCode) {
+        if error == nil, HTTPCode.isOk(statusCode), let responseData = data {
             self.diskCache.cache(data: responseData, forRequest: request)
         }
         
         //Call completion block
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            
             if error == nil && HTTPCode.isOk(statusCode) {
                 let dataResponse = DataResponse(headers: responseHeaders,
                                                 statusCode: statusCode,
@@ -199,8 +201,9 @@ public class SessionInterface: NSObject {
         self.sendToDelegate(responseHeaders: responseHeaders, forRequest: request)
         
         //Call completion block
-        DispatchQueue.main.async {
-            let statusCode = statusCode ?? HTTPCode.ok.rawValue
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            
             if error == nil && HTTPCode.isOk(statusCode) {
                 do {
                     let jsonObject = try T.initialize(jsonData: data)
