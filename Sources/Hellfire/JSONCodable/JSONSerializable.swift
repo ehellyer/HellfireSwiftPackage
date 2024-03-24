@@ -62,7 +62,7 @@ public extension JSONSerializable {
         do {
             decodedObject = try JSONSerialization.jsonObject(with: modelData, options: .allowFragments) as! [String: Any]
         } catch DecodingError.keyNotFound(let codingKey, let context) {
-            let message = "Key not found error decoding instance of `\(Self.typeName)`.Expected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.debugCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
+            let message = "Key not found error decoding instance of `\(Self.typeName)`.\nExpected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.debugCodingPath(context.codingPath))\nError message: \(context.debugDescription)\n."
             throw JSONSerializableError.decodingError.keyNotFound(message: message)
         } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
             let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.debugCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"
@@ -98,7 +98,7 @@ extension JSONSerializable {
         do {
             return try Self.jsonDecoder.decode(Self.self, from: modelData)
         } catch DecodingError.keyNotFound(let codingKey, let context) {
-            let message = "Key not found error decoding instance of `\(Self.typeName)`.Expected value for key '\(codingKey.stringValue)'.\nDecoding path: \(Self.debugCodingPath(context.codingPath))\nError message: \(context.debugDescription)."
+            let message = "Key not found error decoding instance of `\(Self.typeName)`.\nExpected value for key '\(codingKey.stringValue)'. \nDecoding path: \(Self.debugCodingPath(context.codingPath)) \nError message: \(context.debugDescription)"
             throw JSONSerializableError.decodingError.keyNotFound(message: message)
         } catch DecodingError.typeMismatch(let expectedKeyType, let context) {
             let message = "Type mismatch error decoding instance of '\(Self.typeName)'.\nExpected Type: \(expectedKeyType)\nDecoding path: \(Self.typeName).\(Self.debugCodingPath(context.codingPath)).\nError message: \(context.debugDescription)"

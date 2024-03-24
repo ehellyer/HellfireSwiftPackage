@@ -216,7 +216,7 @@ public class SessionInterface: NSObject {
                     completion(.success(dataResponse))
                 } catch {
                     let serviceError = self.createServiceError(data: data,
-                                                               statusCode: statusCode,
+                                                               statusCode: nil,
                                                                error: error,
                                                                requestURL: request.url)
                     completion(.failure(serviceError))
