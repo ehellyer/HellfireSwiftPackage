@@ -521,7 +521,7 @@ extension SessionInterface {
     /// This default implementation of global error handler, prints out the service error.  If the error was a JSONSerializable error, a useful message if printed identifying what and where the issue is with the JSON.
     public func defaultServiceErrorHandler(_ serviceError: ServiceError) -> Void {
         var errorMessage: NSString
-        
+       
         switch serviceError.error {
             case JSONSerializableError.decodingError.keyNotFound(let message):
                 errorMessage = message as NSString

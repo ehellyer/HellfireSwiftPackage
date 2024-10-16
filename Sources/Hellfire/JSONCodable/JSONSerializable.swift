@@ -252,3 +252,39 @@ public enum JSONSerializableError: Error {
         case exception(message: String)
     }
 }
+
+extension JSONSerializableError.decodingError: CustomStringConvertible {
+    public var description: String {
+        switch self {
+            case .keyNotFound(let message):
+                return message
+            case .valueNotFound(let message):
+                return message
+            case .dataCorrupted(let message):
+                return message
+            case .typeMismatch(let message):
+                return message
+            case .exception(let message):
+                return message
+        }
+    }
+    
+    public var localizedDescription: String {
+        return self.description
+    }
+}
+
+extension JSONSerializableError.encodingError: CustomStringConvertible {
+    public var description: String {
+        switch self {
+            case .invalidValue(let message):
+                return message
+            case .exception(let message):
+                return message
+        }
+    }
+    
+    public var localizedDescription: String {
+        return self.description
+    }
+}
