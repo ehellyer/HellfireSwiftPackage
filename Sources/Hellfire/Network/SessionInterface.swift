@@ -9,7 +9,6 @@
 import Foundation
 
 public typealias RequestTaskIdentifier = UUID
-public typealias ReachabilityHandler = (NetworkReachabilityManager.NetworkReachabilityStatus) -> Void
 public typealias ServiceErrorHandler = (ServiceError) -> Void
 public typealias JSONTaskResult<T: JSONSerializable> = (JSONSerializableResult<T>) -> Void
 public typealias DataTaskResult = (DataResult) -> Void
@@ -40,8 +39,6 @@ public class SessionInterface: NSObject {
     
     //MARK: - Private Property API
     
-    private var reachabilityManager: NetworkReachabilityManager?
-    private var privateReachabilityHost: String?
     private lazy var diskCache = DiskCache(config: DiskCacheConfiguration())
     private var backgroundSessionIdentifier: String
     
@@ -78,24 +75,6 @@ public class SessionInterface: NSObject {
     }()
     
     //MARK: - Private Func API
-    
-    private func setupReachabilityManager(host: String) {
-        self.reachabilityManager = NetworkReachabilityManager(host: host)
-        let listener: NetworkReachabilityManager.Listener = { [weak self] (status) in
-            guard let self else { return }
-            switch status {
-                case .notReachable:
-                    self.reachabilityHandler?(.notReachable)
-                case .unknown :
-                    self.reachabilityHandler?(.unknown)
-                case .reachable(.ethernetOrWiFi):
-                    self.reachabilityHandler?(.reachable(.ethernetOrWiFi))
-                case .reachable(.cellular):
-                    self.reachabilityHandler?(.reachable(.cellular))
-            }
-        }
-        self.reachabilityManager?.startListening(onUpdatePerforming: listener)
-    }
     
     private func statusCodeForResponse(_ response: URLResponse?) -> StatusCode? {
         let statusCode: StatusCode? = (response as? HTTPURLResponse)?.statusCode
@@ -231,32 +210,10 @@ public class SessionInterface: NSObject {
     
     //MARK: - Public Property API
     
-    /// Gets or sets the handler for the reachability status change events.
-    public var reachabilityHandler: ReachabilityHandler?
-    
     /// Gets or sets the handler for the service error handler
     public var serviceErrorHandler: ServiceErrorHandler?
-    
-    ///  Gets or sets the reachability host (e.g. "www.apple.com").
-    ///
-    ///  Setting the host to some value starts the listener.
-    ///  Setting the host to nil will stop the listener.
-    public var reachabilityHost: String? {
-        get {
-            return self.privateReachabilityHost
-        }
-        set {
-            self.privateReachabilityHost = newValue
-            if let host = newValue, host.isEmpty == false {
-                self.setupReachabilityManager(host: host)
-            }
-        }
-    }
-    
-    public var lastReachabilityStatus: NetworkReachabilityManager.NetworkReachabilityStatus {
-        return self.reachabilityManager?.status ?? .unknown
-    }
-    
+
+    /// A protocol this is implemented optionally by the SessionInterface delegate.
     public weak var sessionDelegate: HellfireSessionDelegate?
     
     //MARK: - Public Func API
