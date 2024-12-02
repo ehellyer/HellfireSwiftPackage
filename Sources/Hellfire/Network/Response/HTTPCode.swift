@@ -11,11 +11,17 @@ import CoreFoundation
 
 public typealias StatusCode = Int
 
-/// Common HTTP codes
+/// Common HTTP status codes
+///
+/// Code definitions are [linked here.](http://www.iana.org/assignments/http-status-codes)
 public enum HTTPCode: StatusCode, JSONSerializable {
     
-    //MARK: - 1xx Success codes
     
+    //MARK: - 1xx Informational
+    case `continue` = 100
+    case switchingProtocols = 101
+    case processing = 102
+    //105-199 Unassigned
     
     
     //MARK: - 2xx Success codes
@@ -26,7 +32,7 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     /// - GET: The resource has been fetched and is transmitted in the message body.
     /// - HEAD: The representation headers are included in the response without any message body
     /// - POST: The resource describing the result of the action is transmitted in the message body
-    ///  - TRACE: The message body contains the request message as received by the server.
+    /// - TRACE: The message body contains the request message as received by the server.
     ///
     ///  The successful result of a PUT or a DELETE is often not a 200 OK but a 204 No Content (or a 201 Created when the resource is uploaded for the first time).
     case ok = 200
@@ -59,15 +65,37 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     /// If several ranges are sent back, the Content-Type is set to multipart/byte ranges and each fragment covers one range, with Content-Range and Content-Type describing it.
     case partialContent = 206
     
+    case multiStatus = 207
+    
+    case alreadyReported = 208
+    
+    //209-225 Unassigned
+    
+    case imUsed = 226
+
+    
     //MARK: - 3xx Redirection
     
     case multipleChoices = 300
+    
     case moved = 301
+    
     case found = 302
+    
     case method = 303
+    
     case notModified = 304
+    
     case useProxy = 305
+    
+    //306 Unassigned
+    
     case temporaryRedirect = 307
+    
+    case permanentRedirect = 308
+    
+    //309-399 Unassigned
+    
     
     //MARK: - 4xx Errors
     
@@ -94,12 +122,29 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     
     /// The requested resource is capable of generating only content not acceptable according to the Accept headers sent in the request.
     case notAcceptable = 406
+    
     case proxyAuthenticationRequired = 407
+    
     case requestTimeout = 408
+    
     case conflict = 409
+    
     case gone = 410
+    
     case lengthRequired = 411
-    case preconditionRequired = 412
+    
+    ///The 412 (Precondition Failed) status code indicates that one or more conditions given in the request header fields evaluated to false when tested on the server [RFC9110, Section 15.5.13](https://www.rfc-editor.org/rfc/rfc9110.html#name-412-precondition-failed)
+    case preconditionFailed = 412
+    
+    case payloadTooLarge = 413
+    
+    case uriTooLong = 414
+    
+    case unsupportedMediaType = 415
+    
+    case rangeNotSatisfiable = 416
+    
+    case expectationFailed = 417
     
     /// I'm a teapot client error response code indicates that the server refuses to brew coffee because it is, permanently, a teapot.
     ///
@@ -110,22 +155,67 @@ public enum HTTPCode: StatusCode, JSONSerializable {
     /// [I'm a teapot](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/418)
     case imaTeapot = 418
     
+    //419-420 Unassigned
+    case misdirectedRequest = 421
+
     /// The request was well-formed but was unable to be followed due to semantic errors.
     case unprocessableEntity = 422
+
+    case locked = 423
+    
+    case failedDependency = 424
+    
+    //case toEarly = 425
     
     /// The client should switch to a different protocol such as TLS/1.3, given in the Upgrade header field.
     case upgradeRequired = 426
     
+    //427 Unassigned
+    
+    /// __IMPORTANT__ Actually named '`preconditionRequired`', it has been named here '`conditionRequired`' because of a bug in this file where code (412) was accidentally named '`preconditionRequired`'.  Any code using an older version of Hellfire that implemented '`preconditionRequired`' should replace with '`preconditionFailed` (412)'.
+    ///
+    /// The 428 status code indicates that the origin server requires the request to be conditional [RFC6585](https://www.iana.org/go/rfc6585)
+    case conditionRequired = 428
+    
     /// The user has sent too many requests in a given amount of time. Intended for use with rate-limiting schemes.
     case tooManyRequests = 429
+
+    //430 Unassigned
     
+    case requestHeaderFieldsTooLarge = 431
+    
+    //432-450 Unassigned
+    
+    case unavailableForLegalReasons = 451
+    
+    //452-499 Unassigned
+
+
     //MARK: - 5xx Errors
+    
     case internalServerError = 500
+    
     case notImplemented = 501
+    
     case badGateway = 502
+    
     case serviceUnavailable = 503
+    
     case gatewayTimeout = 504
+    
     case httpVersionNotSupported = 505
+    
+    case variantAlsoNegotiates = 506
+    
+    case insufficientStorage = 507
+    
+    case loopDetected = 508
+    
+    case notExtended = 510
+    
+    case networkAuthenticationRequired = 511
+    
+    //512-599 Unassigned
 }
 
 //MARK: - HTTPCode extension

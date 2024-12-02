@@ -78,25 +78,23 @@ public class SessionInterface: NSObject {
     }()
     
     //MARK: - Private Func API
-
+    
     private func setupReachabilityManager(host: String) {
-        self.reachabilityManager?.stopListening()
-        self.reachabilityManager?.listener = nil
         self.reachabilityManager = NetworkReachabilityManager(host: host)
-        self.reachabilityManager?.listener = { [weak self] (status) in
+        let listener: NetworkReachabilityManager.Listener = { [weak self] (status) in
             guard let self else { return }
             switch status {
                 case .notReachable:
-                    self.reachabilityHandler?(.notReachable)
+                    self.reachabilityHandler?(ReachabilityStatus.notReachable)
                 case .unknown :
-                    self.reachabilityHandler?(.unknown)
+                    self.reachabilityHandler?(ReachabilityStatus.unknown)
                 case .reachable(.ethernetOrWiFi):
-                    self.reachabilityHandler?(.reachable(.wiFiOrEthernet))
-                case .reachable(.wwan):
-                    self.reachabilityHandler?(.reachable(.cellular))
+                    self.reachabilityHandler?(ReachabilityStatus.reachable(ReachabilityConnectionType.wiFiOrEthernet))
+                case .reachable(NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType.cellular):
+                    self.reachabilityHandler?(ReachabilityStatus.reachable(ReachabilityConnectionType.cellular))
             }
         }
-        self.reachabilityManager?.startListening()
+        self.reachabilityManager?.startListening(onUpdatePerforming: listener)
     }
     
     private func statusCodeForResponse(_ response: URLResponse?) -> StatusCode? {
@@ -243,7 +241,6 @@ public class SessionInterface: NSObject {
     ///
     ///  Setting the host to some value starts the listener.
     ///  Setting the host to nil will stop the listener.
-    ///  IMPORTANT NOTE: You must set self.reachabilityHost after setting self.reachabilityHandler, otherwise reachability manager will not start listening for network change events.
     public var reachabilityHost: String? {
         get {
             return self.privateReachabilityHost
@@ -487,10 +484,14 @@ extension SessionInterface: URLSessionTaskDelegate {
                            task: URLSessionTask,
                            didReceive challenge: URLAuthenticationChallenge,
                            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        self.sessionDelegate?.session(session,
-                                      task: task,
-                                      didReceive: challenge,
-                                      completionHandler: completionHandler)
+        guard let sessionDelegate =  self.sessionDelegate else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        sessionDelegate.session(session,
+                                task: task,
+                                didReceive: challenge,
+                                completionHandler: completionHandler)
     }
 }
 
@@ -511,9 +512,13 @@ extension SessionInterface: URLSessionDelegate {
     public func urlSession(_ session: URLSession,
                            didReceive challenge: URLAuthenticationChallenge,
                            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        self.sessionDelegate?.session(session,
-                                      didReceive: challenge,
-                                      completionHandler: completionHandler)
+        guard let sessionDelegate =  self.sessionDelegate else {
+            completionHandler(.performDefaultHandling, nil)
+            return
+        }
+        sessionDelegate.session(session,
+                                didReceive: challenge,
+                                completionHandler: completionHandler)
     }
 }
 
@@ -521,7 +526,7 @@ extension SessionInterface {
     /// This default implementation of global error handler, prints out the service error.  If the error was a JSONSerializable error, a useful message if printed identifying what and where the issue is with the JSON.
     public func defaultServiceErrorHandler(_ serviceError: ServiceError) -> Void {
         var errorMessage: NSString
-       
+        
         switch serviceError.error {
             case JSONSerializableError.decodingError.keyNotFound(let message):
                 errorMessage = message as NSString
