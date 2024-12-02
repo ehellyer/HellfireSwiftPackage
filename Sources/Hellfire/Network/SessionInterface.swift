@@ -9,7 +9,7 @@
 import Foundation
 
 public typealias RequestTaskIdentifier = UUID
-public typealias ReachabilityHandler = (ReachabilityStatus) -> Void
+public typealias ReachabilityHandler = (NetworkReachabilityManager.NetworkReachabilityStatus) -> Void
 public typealias ServiceErrorHandler = (ServiceError) -> Void
 public typealias JSONTaskResult<T: JSONSerializable> = (JSONSerializableResult<T>) -> Void
 public typealias DataTaskResult = (DataResult) -> Void
@@ -85,13 +85,13 @@ public class SessionInterface: NSObject {
             guard let self else { return }
             switch status {
                 case .notReachable:
-                    self.reachabilityHandler?(ReachabilityStatus.notReachable)
+                    self.reachabilityHandler?(.notReachable)
                 case .unknown :
-                    self.reachabilityHandler?(ReachabilityStatus.unknown)
+                    self.reachabilityHandler?(.unknown)
                 case .reachable(.ethernetOrWiFi):
-                    self.reachabilityHandler?(ReachabilityStatus.reachable(ReachabilityConnectionType.wiFiOrEthernet))
-                case .reachable(NetworkReachabilityManager.NetworkReachabilityStatus.ConnectionType.cellular):
-                    self.reachabilityHandler?(ReachabilityStatus.reachable(ReachabilityConnectionType.cellular))
+                    self.reachabilityHandler?(.reachable(.ethernetOrWiFi))
+                case .reachable(.cellular):
+                    self.reachabilityHandler?(.reachable(.cellular))
             }
         }
         self.reachabilityManager?.startListening(onUpdatePerforming: listener)
@@ -251,6 +251,10 @@ public class SessionInterface: NSObject {
                 self.setupReachabilityManager(host: host)
             }
         }
+    }
+    
+    public var lastReachabilityStatus: NetworkReachabilityManager.NetworkReachabilityStatus {
+        return self.reachabilityManager?.status ?? .unknown
     }
     
     public weak var sessionDelegate: HellfireSessionDelegate?
