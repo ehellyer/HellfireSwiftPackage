@@ -223,7 +223,7 @@ public class SessionInterface: NSObject {
     /// Upload tasks are run on a background URLSession.  The default URLSession identifier for this background session is Hellfire.BackgroundUrlSession.  A custom background session identifier can be passed in on init.
     /// - Parameter request: The multipart form data request that is to be executed.
     /// - Returns: Unique task identifier for the [URLSessionUploadTask](apple-reference-documentation://ls%2Fdocumentation%2Ffoundation%2FURLSessionUploadTask). This identifier can be used to cancel the network request.
-    public func executeUpload(_ request: MultipartRequest) throws -> RequestTaskIdentifier? {
+    public func executeUpload(_ request: MultipartRequest) throws -> RequestTaskIdentifier {
         do {
             let requestComponents = try request.build()
             var urlRequest = requestComponents.urlRequest

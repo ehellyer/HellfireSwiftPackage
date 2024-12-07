@@ -8,4 +8,4 @@
 import Foundation
 
 /// Current Hellfire version. Necessary since SPM doesn't use dynamic libraries.
-let version = "3.0.2"
+let version = "3.0.3"
